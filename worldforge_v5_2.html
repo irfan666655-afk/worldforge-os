@@ -279,28 +279,20 @@
             }
         }
 
-        // persistRoster(): POSTs each agent in the given guilds array to /api/agents
-        async function persistRoster(guilds) {
-            const agentPosts = [];
-            guilds.forEach(guild => {
-                (guild.agents || []).forEach(agent => {
-                    agentPosts.push(fetch(`${API_BASE}/api/agents`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            guild_key: guild.key,
-                            name: agent.name,
-                            resp: agent.resp,
-                            auth: agent.auth,
-                            escalatesTo: agent.escalatesTo || [],
-                            mem: agent.mem
-                        })
-                    }));
+        // saveRosterToDatabase(): single atomic POST of the full roster to /api/roster
+        async function saveRosterToDatabase(roster) {
+            showToast('Syncing workspace with Supabase database...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/roster`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(roster)
                 });
-            });
-
-            const responses = await Promise.all(agentPosts);
-            return responses.every(r => r.ok);
+                if (!response.ok) throw new Error('Database write failure');
+                showToast('Roster saved safely to cloud!', 'success');
+            } catch (err) {
+                showToast(`Cloud write skipped: ${err.message}`, 'error');
+            }
         }
 
         // -------------------------------------------------------------
@@ -878,8 +870,7 @@
                 showToast('Roster structures written successfully.', 'success');
                 input.value = '';
 
-                const saved = await persistRoster(newRoster.guilds);
-                showToast(saved ? 'New roster saved to database.' : 'Rendered locally, but failed to save to database.', saved ? 'success' : 'error');
+                await saveRosterToDatabase(ROSTER_DATA);
             }
         });
 
@@ -909,8 +900,7 @@
                 realignNodes();
                 showToast('Escalation paths optimized successfully.', 'success');
 
-                const saved = await persistRoster(optimizedRoster.guilds);
-                showToast(saved ? 'Optimized roster saved to database.' : 'Optimized locally, but failed to save to database.', saved ? 'success' : 'error');
+                await saveRosterToDatabase(ROSTER_DATA);
             }
         });
 
