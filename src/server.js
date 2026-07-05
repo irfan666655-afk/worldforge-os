@@ -12,9 +12,9 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 
 const PORT = process.env.PORT || 5000;
 
-// Serve our single-file interactive client at the root URL
+// Serve our single-file interactive v6.0 client at the root URL
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../worldforge_v5_2.html'));
+    res.sendFile(path.join(__dirname, '../worldforge_v6_0.html'));
 });
 
 // Get full active roster data

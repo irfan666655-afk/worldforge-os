@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorldForge v6.0 Immersive Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        void: '#04060a',
+                        panel: '#0a0e17',
+                        panelLight: '#121929',
+                        molten: '#f59e0b',
+                        moltenDark: '#d97706',
+                        signal: '#14b8a6',
+                        signalDark: '#0d9488',
+                        neonPurple: '#a855f7',
+                        ink: '#f1f5f9',
+                        inkMuted: '#94a3b8'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #04060a;
+            color: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0a0e17;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .glow-teal {
+            box-shadow: 0 0 25px rgba(20, 184, 166, 0.2);
+        }
+        .glow-amber {
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.2);
+        }
+        .glow-purple {
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.2);
+        }
+        .node-details-enter {
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(110%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .pulse-border {
+            animation: borderPulse 2s infinite alternate;
+        }
+        @keyframes borderPulse {
+            0% { border-color: rgba(20, 184, 166, 0.3); }
+            100% { border-color: rgba(20, 184, 166, 0.8); }
+        }
+    </style>
+</head>
+<body class="overflow-hidden flex h-screen select-none font-sans">
+
+    <div id="toast" class="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg bg-panel border border-slate-800 shadow-2xl transition-all duration-300 transform translate-y-[-100px] opacity-0">
+        <div id="toast-icon" class="text-signal"><i class="fa-solid fa-circle-info"></i></div>
+        <div id="toast-message" class="text-sm font-medium">Notification message</div>
+    </div>
+
+    <div id="sidebar" class="w-[430px] bg-panel border-r border-slate-800/80 flex flex-col h-full z-10 shrink-0">
+        <!-- Brand identity block -->
+        <div class="p-6 border-b border-slate-800/60 bg-void/40">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-signal via-teal-400 to-neonPurple bg-clip-text text-transparent">WorldForge OS</h1>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mt-0.5">Automated Swarm Workspace • v6.0.0</p>
+                </div>
+                <span id="conn-badge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-400 font-mono">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                    SYNCING...
+                </span>
+            </div>
+
+            <!-- API input module -->
+            <div class="mt-4 bg-void/60 rounded-lg p-2.5 border border-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-key text-slate-500 text-xs pl-1"></i>
+                <input type="password" id="api-key-input" placeholder="Paste Gemini API Key..." class="flex-grow bg-transparent text-xs font-mono text-signal focus:outline-none placeholder:text-slate-600">
+                <button onclick="toggleKeyVisibility()" class="text-slate-500 hover:text-slate-300 text-xs px-1">
+                    <i id="key-vis-icon" class="fa-solid fa-eye-slash"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="px-6 pt-4">
+            <div class="flex bg-void/50 p-1 rounded-lg border border-slate-800/80">
+                <button id="tab-chat" onclick="switchTab('chat')" class="flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all bg-panelLight text-signal border border-slate-700/50">
+                    <i class="fa-solid fa-comments mr-1.5"></i>Consultant
+                </button>
+                <button id="tab-architect" onclick="switchTab('architect')" class="flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-compass-drafting mr-1.5"></i>Architect
+                </button>
+                <button id="tab-sandbox" onclick="switchTab('sandbox')" class="flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-shield-halved mr-1.5"></i>Security
+                </button>
+            </div>
+        </div>
+
+        <div id="chat-panel" class="flex-grow flex flex-col p-6 overflow-hidden gap-4">
+            <!-- Memory & query search input -->
+            <div class="bg-void/40 p-3 border border-slate-800 rounded-lg flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs"></i>
+                <input type="text" id="memory-search-input" placeholder="Semantic memory search (e.g. database)..." class="bg-transparent text-xs text-slate-300 w-full focus:outline-none">
+                <button onclick="performSemanticSearch()" class="text-[10px] bg-neonPurple/20 hover:bg-neonPurple/40 border border-neonPurple/30 text-neonPurple px-2 py-0.5 rounded transition-all">Search</button>
+            </div>
+            <p class="text-[9px] text-amber-500/80 font-mono -mt-2 flex items-center gap-1">
+                <i class="fa-solid fa-flask"></i> SIMULATED — returns a randomized score, not a real vector/embedding lookup.
+            </p>
+
+            <!-- Active feedback console logs -->
+            <div id="chat-history" class="flex-grow overflow-y-auto custom-scrollbar space-y-4 pr-1">
+                <div class="p-3 bg-void/40 border border-slate-800 rounded-lg text-slate-400 text-xs leading-relaxed">
+                    <span class="text-signal font-semibold block mb-1">System Memory Grounding Active:</span>
+                    Your operational rosters are mapped inside active index trees. Submit queries below to evaluate bottlenecks or simulate multi-agent message routing structures.
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2 bg-void/40 p-2.5 border border-slate-800 rounded-xl">
+                <textarea id="chat-input" placeholder="Query the active swarm workspace..." class="w-full bg-transparent text-xs text-slate-300 h-16 resize-none focus:outline-none placeholder:text-slate-600 custom-scrollbar"></textarea>
+                <div class="flex justify-between items-center pt-2 border-t border-slate-800/60">
+                    <span class="text-[9px] font-mono text-slate-500">Gemini Grounded Swarm Agent</span>
+                    <button id="send-btn" class="bg-signal/15 hover:bg-signal/25 text-signal border border-signal/30 text-xs font-bold py-1.5 px-4 rounded-lg transition-all">
+                        Consult Swarm
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="architect-panel" class="hidden flex-grow flex-col p-6 overflow-hidden gap-4">
+            <div class="text-xs text-slate-400 leading-relaxed mb-1">
+                <span class="text-amber-400 font-semibold block mb-1">Interactive Blueprint Forge:</span>
+                Submit natural language blueprints (e.g., "A modern dev squad: Project Lead, Database Engineer, API Builder"). The engine automatically builds topology maps and saves changes to Supabase.
+            </div>
+
+            <div class="flex flex-col gap-2 bg-void/40 p-2.5 border border-slate-800 rounded-xl">
+                <textarea id="architect-input" placeholder="Describe the optimal guild structure..." class="w-full bg-transparent text-xs text-slate-300 h-24 resize-none focus:outline-none placeholder:text-slate-600 custom-scrollbar"></textarea>
+                <div class="flex justify-between items-center pt-2 border-t border-slate-800/60">
+                    <span class="text-[9px] font-mono text-slate-500">JSON Schema Enforced</span>
+                    <button id="architect-btn" class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 text-xs font-bold py-1.5 px-4 rounded-lg transition-all">
+                        Build Structure
+                    </button>
+                </div>
+            </div>
+
+            <!-- Optimization suite tools -->
+            <div class="grid grid-cols-2 gap-3 mt-2">
+                <button id="audit-btn" class="flex flex-col items-center justify-center p-3 bg-panelLight/40 hover:bg-panelLight/80 border border-slate-800 rounded-lg text-slate-300 transition-all gap-1.5">
+                    <i class="fa-solid fa-stethoscope text-signal"></i>
+                    <span class="text-[10px] font-semibold tracking-wide">Audit Roster</span>
+                </button>
+                <button id="optimize-btn" class="flex flex-col items-center justify-center p-3 bg-panelLight/40 hover:bg-panelLight/80 border border-slate-800 rounded-lg text-slate-300 transition-all gap-1.5">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                    <span class="text-[10px] font-semibold tracking-wide">Optimize Roster</span>
+                </button>
+            </div>
+
+            <div class="mt-auto p-3 bg-void/50 border border-slate-800/60 rounded-lg flex items-center justify-between">
+                <span class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Active Roster Size</span>
+                <span id="agent-count" class="text-xs font-mono font-bold text-signal">0 Agents</span>
+            </div>
+        </div>
+
+        <div id="sandbox-panel" class="hidden flex-grow flex-col p-6 overflow-hidden gap-4">
+            <div class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[10px] text-amber-400 font-mono flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                <span>SIMULATED PANEL — nothing below performs real authentication, tenant isolation, or database operations. UI only, for demonstration.</span>
+            </div>
+
+            <div class="p-4 bg-void/50 border border-slate-800/80 rounded-xl flex flex-col gap-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-neonPurple/20 border border-neonPurple/40 flex items-center justify-center text-neonPurple text-xs">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-200">Tenant Workspace Isolation <span class="text-amber-400 font-mono text-[9px] font-normal">(Simulated)</span></h4>
+                        <p class="text-[9px] text-slate-500">Demo UI only — no real backend isolation exists</p>
+                    </div>
+                </div>
+
+                <!-- Tenancy controls -->
+                <div class="mt-2 space-y-2 text-xs">
+                    <div>
+                        <label class="text-[10px] text-slate-500 block mb-1">Active Sandbox ID (UUID)</label>
+                        <input type="text" id="tenant-uuid" class="w-full bg-void border border-slate-800 rounded p-2 text-[10px] text-neonPurple font-mono focus:outline-none cursor-not-allowed" readonly value="8f4d92a0-c3b6-4df1-8720-dfb671a938fc">
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="switchSandbox('8f4d92a0-c3b6-4df1-8720-dfb671a938fc')" class="flex-1 py-1.5 text-[10px] bg-neonPurple/15 hover:bg-neonPurple/25 border border-neonPurple/30 text-neonPurple rounded font-bold transition-all">Workspace A</button>
+                        <button onclick="switchSandbox('2e104a37-bb92-421b-80df-ef24a1b0d26c')" class="flex-1 py-1.5 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-bold transition-all">Workspace B</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Core security configurations -->
+            <div class="p-4 bg-void/50 border border-slate-800/80 rounded-xl space-y-3">
+                <h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5"><i class="fa-solid fa-microchip text-signal"></i> Autonomous Memory Specs <span class="text-amber-400 font-mono text-[9px] font-normal">(Simulated)</span></h4>
+                <p class="text-[10px] text-slate-500 leading-relaxed">Demo only: this button does not connect to Supabase or any real pgvector index. It writes simulated log lines to illustrate what a future vectorized memory pipeline could look like.</p>
+
+                <button onclick="reinitializeDatabaseVectors()" class="w-full py-2 bg-signal/15 hover:bg-signal/25 border border-signal/30 text-signal rounded text-xs font-bold transition-all">
+                    Reset PgVector Embeddings (Simulated)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container" class="flex-grow h-full bg-void relative flex flex-col overflow-hidden">
+
+        <!-- Interactive Workspace Controls Overlay -->
+        <div class="absolute top-0 left-0 right-0 p-6 flex justify-between items-center pointer-events-none z-10 bg-gradient-to-b from-void to-void/0">
+            <div class="pointer-events-auto bg-void/60 backdrop-blur px-4 py-2 rounded-xl border border-slate-800/40">
+                <h2 class="text-base font-bold text-slate-200">Interactive Swarm Architecture</h2>
+                <p class="text-[10px] text-slate-500 font-mono mt-0.5">Drag to move • Scroll to Pan & Zoom • Click agents to trigger communications</p>
+            </div>
+
+            <div class="flex gap-2 pointer-events-auto">
+                <button onclick="resetCanvasTransform()" class="px-3 py-1.5 bg-panelLight/80 border border-slate-800 rounded-lg text-[10px] font-semibold text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-expand"></i> Reset Viewport
+                </button>
+                <button onclick="resetCanvasForces()" class="px-3 py-1.5 bg-panelLight/80 border border-slate-800 rounded-lg text-[10px] font-semibold text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrows-rotate"></i> Recenter Force
+                </button>
+            </div>
+        </div>
+
+        <!-- Render Target Canvas -->
+        <canvas id="forge-canvas" class="w-full h-full block bg-void cursor-grab active:cursor-grabbing"></canvas>
+
+        <div class="absolute bottom-6 left-6 right-6 h-36 bg-panel/90 backdrop-blur-md border border-slate-800 rounded-xl p-4 flex flex-col z-10 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-signal animate-pulse"></span>
+                    <span class="text-[10px] font-mono font-bold tracking-wider uppercase text-signal">Real-Time Swarm Agent Message Bus</span>
+                </div>
+                <button onclick="clearConsole()" class="text-[9px] hover:text-slate-200 text-slate-500 font-mono font-bold transition-all">CLEAR BUS</button>
+            </div>
+            <div id="console-logs" class="flex-grow overflow-y-auto custom-scrollbar font-mono text-[10px] text-slate-400 space-y-1">
+                <div class="text-slate-500">[SYSTEM]: Pipeline configured. Click any agent node in the canvas view to trigger escalation cascading flows!</div>
+            </div>
+        </div>
+
+        <div id="inspector-panel" class="absolute top-6 right-6 bottom-44 w-96 bg-panel/95 backdrop-blur-md border border-slate-800 rounded-xl shadow-2xl p-6 flex-col hidden z-20 overflow-y-auto custom-scrollbar node-details-enter glow-teal">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+                <div>
+                    <span class="text-[9px] font-mono text-signal uppercase tracking-wider font-bold">Node Specification Card</span>
+                    <h3 id="inspect-name" class="text-lg font-bold text-slate-100 mt-0.5">Agent Name</h3>
+                </div>
+                <button onclick="closeInspector()" class="text-slate-500 hover:text-slate-300 transition-all text-sm px-2 py-1 bg-void rounded border border-slate-800/80">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Inspector detailed parameters -->
+            <div class="space-y-4 text-xs">
+                <div>
+                    <span class="text-[10px] text-slate-500 font-mono block mb-1">Responsibility Scope</span>
+                    <p id="inspect-resp" class="p-3 bg-void/50 border border-slate-800/80 rounded-lg text-slate-300 leading-relaxed font-mono text-[11px]"></p>
+                </div>
+
+                <div>
+                    <span class="text-[10px] text-slate-500 font-mono block mb-1">Execution Authority Boundaries</span>
+                    <p id="inspect-auth" class="p-3 bg-void/50 border border-slate-800/80 rounded-lg text-slate-300 leading-relaxed font-mono text-[11px]"></p>
+                </div>
+
+                <div>
+                    <span class="text-[10px] text-slate-500 font-mono block mb-1">Static Memory State Logs</span>
+                    <p id="inspect-mem" class="p-3 bg-void/50 border border-slate-800/80 rounded-lg text-slate-300 leading-relaxed font-mono text-[11px]"></p>
+                </div>
+
+                <div>
+                    <span class="text-[10px] text-slate-500 font-mono block mb-1.5">Escalation Directives</span>
+                    <div id="inspect-escalates" class="flex flex-wrap gap-1.5"></div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-800/60 flex gap-2">
+                    <button id="swarm-trigger-btn" class="flex-1 py-2 bg-neonPurple/15 hover:bg-neonPurple/25 border border-neonPurple/30 text-neonPurple rounded font-bold text-xs transition-all flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-bolt"></i> Trigger Message Swarm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // System variables
+        let apiKey = localStorage.getItem('wf_gemini_key') || '';
+        let ROSTER_DATA = {
+            "rosterVersion": "6.0.0",
+            "guilds": []
+        };
+
+        // Determine current production endpoints
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
+            ? 'http://localhost:5000'
+            : window.location.origin;
+
+        async function fetchRoster() {
+            try {
+                const response = await fetch(`${API_BASE}/api/roster`);
+                if (!response.ok) throw new Error('API request failed');
+
+                const data = await response.json();
+                if (data && data.guilds && data.guilds.length > 0) {
+                    ROSTER_DATA = data;
+                    document.getElementById('conn-badge').className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-signal/10 border border-signal/20 text-[10px] text-signal font-mono";
+                    document.getElementById('conn-badge').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-signal animate-pulse"></span> DATABASE CONNECTED';
+                    writeToConsole(`[DB]: Successfully synchronized live schema from database!`);
+                } else {
+                    throw new Error('Schema empty or corrupted');
+                }
+            } catch (err) {
+                console.warn('Backend unavailable. Loading default production mock schema.', err);
+                ROSTER_DATA = {
+                    "rosterVersion": "6.0.0",
+                    "guilds": [
+                        {
+                            "key": "dev",
+                            "name": "Creative Guild",
+                            "agents": [
+                                {
+                                    "name": "Creative Director",
+                                    "resp": "Formulates visual style schemes, plans aesthetic layouts, and designs layout specifications.",
+                                    "auth": "May authorize UI upgrades, style changes, and deployment schemas.",
+                                    "escalatesTo": ["Project Manager"],
+                                    "mem": "Local aesthetic asset configuration vectors."
+                                },
+                                {
+                                    "name": "Project Manager",
+                                    "resp": "Coordinates task flows and ensures system performance loops align cleanly with timelines.",
+                                    "auth": "Full orchestration permissions across client interfaces.",
+                                    "escalatesTo": ["System Architect"],
+                                    "mem": "Milestone indices and repository checkpoints."
+                                },
+                                {
+                                    "name": "System Architect",
+                                    "resp": "Directs core network structures and performs live integration evaluations.",
+                                    "auth": "Unlimited configuration authorizations inside workspace.",
+                                    "escalatesTo": [],
+                                    "mem": "PostgreSQL database credentials and API mappings."
+                                }
+                            ]
+                        }
+                    ]
+                };
+                document.getElementById('conn-badge').className = "flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-400 font-mono";
+                document.getElementById('conn-badge').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> OFFLINE MOCK';
+                writeToConsole(`[SYSTEM]: API server offline. Defaulting to local offline mock schemas.`);
+            }
+
+            parseNodesFromRoster();
+            realignNodes();
+        }
+
+        async function saveRosterToDatabase(roster) {
+            showToast('Synchronizing workspace nodes with Cloud DB...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/roster`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(roster)
+                });
+                if (!response.ok) throw new Error('Database transaction failed');
+                showToast('Roster saved cleanly to cloud!', 'success');
+                writeToConsole(`[DB]: Completed unified schema sync to database.`);
+            } catch (err) {
+                showToast(`Local write only: ${err.message}`, 'error');
+                writeToConsole(`[DB WORKSPACE]: Database write skipped. Changes saved locally in memory.`);
+            }
+        }
+
+        const canvas = document.getElementById('forge-canvas');
+        const ctx = canvas.getContext('2d');
+        let nodes = [];
+        let links = [];
+        let pulses = []; // Holds message pulse objects
+
+        // Matrix Transformations State
+        let scale = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let startPanX = 0;
+        let startPanY = 0;
+
+        let draggedNode = null;
+        let selectedNode = null;
+        let mouse = { x: 0, y: 0 };
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            realignNodes();
+        });
+
+        function parseNodesFromRoster() {
+            nodes = [];
+            links = [];
+            let totalAgents = 0;
+
+            ROSTER_DATA.guilds.forEach((guild) => {
+                const guildNode = {
+                    id: guild.key,
+                    label: guild.name,
+                    isGuild: true,
+                    x: canvas.width / 2 + (Math.random() - 0.5) * 100,
+                    y: canvas.height / 2 + (Math.random() - 0.5) * 100,
+                    vx: 0,
+                    vy: 0,
+                    radius: 24
+                };
+                nodes.push(guildNode);
+
+                guild.agents.forEach((agent) => {
+                    totalAgents++;
+                    const agentNode = {
+                        id: agent.name,
+                        label: agent.name,
+                        isGuild: false,
+                        resp: agent.resp,
+                        auth: agent.auth,
+                        mem: agent.mem,
+                        escalatesTo: agent.escalatesTo || [],
+                        x: canvas.width / 2 + (Math.random() - 0.5) * 300,
+                        y: canvas.height / 2 + (Math.random() - 0.5) * 300,
+                        vx: 0,
+                        vy: 0,
+                        radius: 14
+                    };
+                    nodes.push(agentNode);
+
+                    links.push({
+                        source: agentNode.id,
+                        target: guildNode.id,
+                        isEscalation: false
+                    });
+                });
+            });
+
+            // Map escalation dependencies
+            ROSTER_DATA.guilds.forEach(guild => {
+                guild.agents.forEach(agent => {
+                    if (agent.escalatesTo) {
+                        agent.escalatesTo.forEach(targetName => {
+                            links.push({
+                                source: agent.name,
+                                target: targetName,
+                                isEscalation: true
+                            });
+                        });
+                    }
+                });
+            });
+
+            document.getElementById('agent-count').textContent = `${totalAgents} Agent${totalAgents !== 1 ? 's' : ''}`;
+        }
+
+        function realignNodes() {
+            if (nodes.length === 0) return;
+            nodes.forEach((node, i) => {
+                const angle = (i / nodes.length) * Math.PI * 2;
+                const distance = node.isGuild ? 120 : 250;
+                node.x = canvas.width / 2 + Math.cos(angle) * distance;
+                node.y = canvas.height / 2 + Math.sin(angle) * distance;
+                node.vx = 0;
+                node.vy = 0;
+            });
+        }
+
+        function resetCanvasTransform() {
+            scale = 1.0;
+            panX = 0;
+            panY = 0;
+            showToast('Viewport centered.', 'success');
+        }
+
+        function resetCanvasForces() {
+            realignNodes();
+            showToast('Simulation space balanced.', 'success');
+        }
+
+        function updatePhysics() {
+            const kRepel = 240;
+            const kLink = 0.04;
+            const damping = 0.82;
+
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const n1 = nodes[i];
+                    const n2 = nodes[j];
+                    const dx = n2.x - n1.x;
+                    const dy = n2.y - n1.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+                    if (dist < 500) {
+                        const force = kRepel / (dist * dist);
+                        const fx = (dx / dist) * force;
+                        const fy = (dy / dist) * force;
+
+                        n1.vx -= fx;
+                        n1.vy -= fy;
+                        n2.vx += fx;
+                        n2.vy += fy;
+                    }
+                }
+            }
+
+            links.forEach(link => {
+                const n1 = nodes.find(n => n.id === link.source);
+                const n2 = nodes.find(n => n.id === link.target);
+                if (!n1 || !n2) return;
+
+                const dx = n2.x - n1.x;
+                const dy = n2.y - n1.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                const targetDist = link.isEscalation ? 200 : 120;
+
+                const force = (dist - targetDist) * kLink;
+                const fx = (dx / dist) * force;
+                const fy = (dy / dist) * force;
+
+                n1.vx += fx;
+                n1.vy += fy;
+                n2.vx -= fx;
+                n2.vy -= fy;
+            });
+
+            nodes.forEach(node => {
+                if (node === draggedNode) return;
+
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                const dx = cx - node.x;
+                const dy = cy - node.y;
+
+                node.vx += dx * 0.003;
+                node.vy += dy * 0.003;
+
+                node.x += node.vx;
+                node.y += node.vy;
+                node.vx *= damping;
+                node.vy *= damping;
+
+                node.x = Math.max(50, Math.min(canvas.width - 50, node.x));
+                node.y = Math.max(50, Math.min(canvas.height - 50, node.y));
+            });
+
+            // Update running message pulses
+            pulses.forEach((pulse, index) => {
+                pulse.progress += 0.015;
+                if (pulse.progress >= 1.0) {
+                    // Trigger escalation simulation in console when pulse completes
+                    writeToConsole(`[ROUTING]: Escalation reached target ${pulse.targetName}.`);
+                    pulses.splice(index, 1);
+                }
+            });
+        }
+
+        function drawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Apply camera zoom & panning vectors
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(scale, scale);
+
+            // Draw link connections
+            links.forEach(link => {
+                const sourceNode = nodes.find(n => n.id === link.source);
+                const targetNode = nodes.find(n => n.id === link.target);
+                if (!sourceNode || !targetNode) return;
+
+                ctx.beginPath();
+                ctx.moveTo(sourceNode.x, sourceNode.y);
+                ctx.lineTo(targetNode.x, targetNode.y);
+
+                if (link.isEscalation) {
+                    ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)'; // neon Purple
+                    ctx.lineWidth = 1.8;
+                    ctx.setLineDash([6, 6]);
+                } else {
+                    ctx.strokeStyle = 'rgba(30, 41, 59, 0.5)';
+                    ctx.lineWidth = 1.2;
+                    ctx.setLineDash([]);
+                }
+                ctx.stroke();
+            });
+            ctx.setLineDash([]);
+
+            // Draw neon active message pulses
+            pulses.forEach(pulse => {
+                const sNode = nodes.find(n => n.id === pulse.source);
+                const tNode = nodes.find(n => n.id === pulse.target);
+                if (sNode && tNode) {
+                    const px = sNode.x + (tNode.x - sNode.x) * pulse.progress;
+                    const py = sNode.y + (tNode.y - sNode.y) * pulse.progress;
+
+                    ctx.beginPath();
+                    ctx.arc(px, py, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#a855f7'; // Purple pulse highlight
+                    ctx.shadowColor = '#a855f7';
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.shadowBlur = 0; // Reset shadow
+                }
+            });
+
+            // Draw nodes
+            nodes.forEach(node => {
+                const isSelected = selectedNode && selectedNode.id === node.id;
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+
+                if (node.isGuild) {
+                    ctx.fillStyle = '#0a0e17';
+                    ctx.strokeStyle = '#14b8a6'; // teal
+                    ctx.lineWidth = 3.5;
+                } else {
+                    ctx.fillStyle = isSelected ? '#14b8a6' : '#121929';
+                    ctx.strokeStyle = isSelected ? '#f59e0b' : '#1e293b';
+                    ctx.lineWidth = 2;
+                }
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw labels
+                ctx.fillStyle = node.isGuild ? '#14b8a6' : '#cbd5e1';
+                ctx.font = node.isGuild ? 'bold 11px Inter' : '500 10px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.label, node.x, node.y - node.radius - 8);
+            });
+
+            ctx.restore();
+        }
+
+        function canvasAnimationLoop() {
+            updatePhysics();
+            drawCanvas();
+            requestAnimationFrame(canvasAnimationLoop);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Convert raw screen clicks to camera world space
+            const worldX = (clickX - panX) / scale;
+            const worldY = (clickY - panY) / scale;
+
+            draggedNode = nodes.find(node => {
+                const dx = node.x - worldX;
+                const dy = node.y - worldY;
+                return Math.sqrt(dx * dx + dy * dy) < node.radius + 5;
+            });
+
+            if (draggedNode) {
+                if (!draggedNode.isGuild) {
+                    selectedNode = draggedNode;
+                    inspectNode(draggedNode);
+                }
+            } else {
+                // If clicked empty space, trigger panning state
+                isPanning = true;
+                startPanX = clickX - panX;
+                startPanY = clickY - panY;
+                closeInspector();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (draggedNode) {
+                draggedNode.x = (mouseX - panX) / scale;
+                draggedNode.y = (mouseY - panY) / scale;
+            } else if (isPanning) {
+                panX = mouseX - startPanX;
+                panY = mouseY - startPanY;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            draggedNode = null;
+            isPanning = false;
+        });
+
+        // Wheel Zoom Vector calculations
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Anchor zoom to actual mouse position coordinates
+            const zoomCenterWorldX = (mouseX - panX) / scale;
+            const zoomCenterWorldY = (mouseY - panY) / scale;
+
+            const zoomFactor = 1.1;
+            if (e.deltaY < 0) {
+                scale *= zoomFactor;
+            } else {
+                scale /= zoomFactor;
+            }
+
+            scale = Math.max(0.3, Math.min(3.0, scale)); // Clamp bounds
+
+            panX = mouseX - zoomCenterWorldX * scale;
+            panY = mouseY - zoomCenterWorldY * scale;
+        });
+
+        // Touch zoom support for dynamic workspaces
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 0) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const clickX = touch.clientX - rect.left;
+            const clickY = touch.clientY - rect.top;
+
+            const worldX = (clickX - panX) / scale;
+            const worldY = (clickY - panY) / scale;
+
+            draggedNode = nodes.find(node => {
+                const dx = node.x - worldX;
+                const dy = node.y - worldY;
+                return Math.sqrt(dx * dx + dy * dy) < node.radius + 10;
+            });
+
+            if (draggedNode) {
+                if (!draggedNode.isGuild) {
+                    selectedNode = draggedNode;
+                    inspectNode(draggedNode);
+                }
+            } else {
+                isPanning = true;
+                startPanX = clickX - panX;
+                startPanY = clickY - panY;
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 0) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = touch.clientX - rect.left;
+            const mouseY = touch.clientY - rect.top;
+
+            if (draggedNode) {
+                draggedNode.x = (mouseX - panX) / scale;
+                draggedNode.y = (mouseY - panY) / scale;
+            } else if (isPanning) {
+                panX = mouseX - startPanX;
+                panY = mouseY - startPanY;
+            }
+        });
+
+        canvas.addEventListener('touchend', () => {
+            draggedNode = null;
+            isPanning = false;
+        });
+
+        function inspectNode(node) {
+            document.getElementById('inspect-name').textContent = node.label;
+            document.getElementById('inspect-resp').textContent = node.resp || 'Unassigned responsibility bounds.';
+            document.getElementById('inspect-auth').textContent = node.auth || 'Unconfigured authority parameter.';
+            document.getElementById('inspect-mem').textContent = node.mem || 'Clear of memory touchpoints.';
+
+            const escalatesContainer = document.getElementById('inspect-escalates');
+            escalatesContainer.innerHTML = '';
+
+            if (node.escalatesTo && node.escalatesTo.length > 0) {
+                node.escalatesTo.forEach(target => {
+                    const badge = document.createElement('span');
+                    badge.className = 'px-2 py-0.5 rounded bg-neonPurple/10 border border-neonPurple/20 text-neonPurple font-mono text-[9px] font-semibold';
+                    badge.textContent = target;
+                    escalatesContainer.appendChild(badge);
+                });
+            } else {
+                const noneBadge = document.createElement('span');
+                noneBadge.className = 'px-2 py-0.5 rounded bg-slate-800 text-slate-500 font-mono text-[9px]';
+                noneBadge.textContent = 'None Assigned';
+                escalatesContainer.appendChild(noneBadge);
+            }
+
+            // Set up visual swarm trigger listener on this node
+            const triggerBtn = document.getElementById('swarm-trigger-btn');
+            triggerBtn.onclick = () => {
+                simulateSwarmSequence(node);
+            };
+
+            const inspector = document.getElementById('inspector-panel');
+            inspector.classList.remove('hidden');
+        }
+
+        function closeInspector() {
+            selectedNode = null;
+            document.getElementById('inspector-panel').classList.add('hidden');
+        }
+
+        function writeToConsole(message) {
+            const consoleEl = document.getElementById('console-logs');
+            const logLine = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            logLine.innerHTML = `<span class="text-slate-600">[${time}]</span> ${message}`;
+            consoleEl.appendChild(logLine);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console-logs').innerHTML = '';
+            writeToConsole(`[SYSTEM]: Bus logs initialized and ready.`);
+        }
+
+        function simulateSwarmSequence(startNode) {
+            writeToConsole(`[INITIATING SWARM]: Triggered cascade loop from agent [${startNode.label}]`);
+
+            if (startNode.escalatesTo && startNode.escalatesTo.length > 0) {
+                startNode.escalatesTo.forEach(target => {
+                    writeToConsole(`[ROUTING]: Dispatching visual communication envelope to [${target}]...`);
+
+                    // Create dynamic moving pulse along connection link
+                    pulses.push({
+                        source: startNode.id,
+                        target: target,
+                        targetName: target,
+                        progress: 0.0
+                    });
+                });
+            } else {
+                writeToConsole(`[SWARM COMPLETED]: Agent [${startNode.label}] has no escalated targets. Cascade halts.`);
+            }
+        }
+
+        function performSemanticSearch() {
+            const input = document.getElementById('memory-search-input').value.trim();
+            if (!input) return;
+
+            writeToConsole(`[SIMULATED SEARCH]: Running a randomized demo match for query: "${input}" (no real embedding lookup occurs).`);
+            showToast('Simulated search running (no real vector backend)...', 'info');
+
+            setTimeout(() => {
+                const score = (0.85 + Math.random() * 0.12).toFixed(4);
+                writeToConsole(`[SIMULATED SEARCH]: Demo match score ${score} (randomly generated, not a real result).`);
+                showToast(`Simulated match complete (Score: ${score})`, 'success');
+            }, 800);
+        }
+
+        function switchSandbox(uuid) {
+            document.getElementById('tenant-uuid').value = uuid;
+            showToast(`Switched workspace sandbox profile (simulated, UI only).`, 'success');
+            writeToConsole(`[SIMULATED SECURITY-AUTH]: Demo tenant context changed to Workspace UUID ${uuid} (no real auth/isolation performed).`);
+        }
+
+        function reinitializeDatabaseVectors() {
+            showToast('Running simulated pgvector reset (no real DB call)...', 'info');
+            writeToConsole(`[SIMULATED DB-EMBEDDINGS]: Demo reset started (not connected to any real database)...`);
+            setTimeout(() => {
+                writeToConsole(`[SIMULATED DB-EMBEDDINGS]: Demo complete. No real vector data was touched.`);
+                showToast('Simulated vector reset complete (demo only)', 'success');
+            }, 1000);
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msgEl = document.getElementById('toast-message');
+
+            msgEl.textContent = message;
+
+            if (type === 'error') {
+                toast.className = 'fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg bg-panel border border-red-500/40 shadow-2xl transition-all duration-300 transform';
+                icon.className = 'text-red-400';
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else if (type === 'success') {
+                toast.className = 'fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg bg-panel border border-signal/40 shadow-2xl transition-all duration-300 transform';
+                icon.className = 'text-signal';
+                icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            } else {
+                toast.className = 'fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg bg-panel border border-slate-800 shadow-2xl transition-all duration-300 transform';
+                icon.className = 'text-teal-400';
+                icon.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
+            }
+
+            toast.style.transform = 'translateY(0)';
+            toast.style.opacity = '1';
+
+            setTimeout(() => {
+                toast.style.transform = 'translateY(-100px)';
+                toast.style.opacity = '0';
+            }, 4000);
+        }
+
+        function switchTab(tab) {
+            const tabChat = document.getElementById('tab-chat');
+            const tabArch = document.getElementById('tab-architect');
+            const tabSand = document.getElementById('tab-sandbox');
+            const panelChat = document.getElementById('chat-panel');
+            const panelArch = document.getElementById('architect-panel');
+            const panelSand = document.getElementById('sandbox-panel');
+
+            // Default hidden styles
+            tabChat.className = "flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all text-slate-400 hover:text-slate-200";
+            tabArch.className = "flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all text-slate-400 hover:text-slate-200";
+            tabSand.className = "flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all text-slate-400 hover:text-slate-200";
+
+            panelChat.classList.add('hidden');
+            panelArch.classList.add('hidden');
+            panelSand.classList.add('hidden');
+
+            if (tab === 'chat') {
+                tabChat.className = "flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all bg-panelLight text-signal border border-slate-700/50";
+                panelChat.classList.remove('hidden');
+            } else if (tab === 'architect') {
+                tabArch.className = "flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all bg-panelLight text-amber-400 border border-slate-700/50";
+                panelArch.classList.remove('hidden');
+            } else {
+                tabSand.className = "flex-1 py-1.5 rounded text-xs font-semibold tracking-wide transition-all bg-panelLight text-neonPurple border border-slate-700/50";
+                panelSand.classList.remove('hidden');
+            }
+        }
+
+        function toggleKeyVisibility() {
+            const input = document.getElementById('api-key-input');
+            const icon = document.getElementById('key-vis-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye-slash';
+            }
+        }
+
+        document.getElementById('api-key-input').addEventListener('input', (e) => {
+            apiKey = e.target.value.trim();
+            localStorage.setItem('wf_gemini_key', apiKey);
+        });
+
+        if (apiKey) {
+            document.getElementById('api-key-input').value = apiKey;
+        }
+
+        async function queryGemini(prompt, isArchitect = false) {
+            if (!apiKey) {
+                showToast('Gemini API Key Required! Submit a key inside the sidebar form.', 'error');
+                return null;
+            }
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{
+                    role: 'user',
+                    parts: [{ text: isArchitect ? buildArchitectPrompt(prompt) : buildConsultantPrompt(prompt) }]
+                }],
+                systemInstruction: {
+                    parts: [{
+                        text: isArchitect
+                            ? "You are the WorldForge Systems Architect. You design optimized structural rosters. You must ALWAYS output valid JSON matching the schema precisely without markdown wrappers."
+                            : "You are the WorldForge Systems Consultant. You analyze operational bottlenecks, team responsibilities, and performance. Be concise and sharp."
+                    }]
+                }
+            };
+
+            if (isArchitect) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            guilds: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        key: { type: "STRING" },
+                                        name: { type: "STRING" },
+                                        agents: {
+                                            type: "ARRAY",
+                                            items: {
+                                                type: "OBJECT",
+                                                properties: {
+                                                    name: { type: "STRING" },
+                                                    resp: { type: "STRING" },
+                                                    auth: { type: "STRING" },
+                                                    escalatesTo: { type: "ARRAY", items: { type: "STRING" } },
+                                                    mem: { type: "STRING" }
+                                                },
+                                                required: ["name", "resp", "auth", "escalatesTo", "mem"]
+                                            }
+                                        }
+                                    },
+                                    required: ["key", "name", "agents"]
+                                }
+                            }
+                        },
+                        required: ["guilds"]
+                    }
+                };
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error?.message || 'API Error');
+                }
+
+                const result = await response.json();
+                const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!rawText) throw new Error('Empty model payload');
+
+                if (isArchitect) {
+                    return JSON.parse(rawText.trim());
+                }
+                return rawText;
+            } catch (err) {
+                showToast(`Swarm Query Failed: ${err.message}`, 'error');
+                console.error(err);
+                return null;
+            }
+        }
+
+        function buildConsultantPrompt(q) {
+            return `Active Roster: ${JSON.stringify(ROSTER_DATA)}\nInquiry: ${q}`;
+        }
+
+        function buildArchitectPrompt(q) {
+            return `Build dynamic operational structures matching our JSON schema based on instructions: ${q}`;
+        }
+
+        function buildAuditPrompt() {
+            return `Analyze roster for unlinked agents, dependencies, bottlenecks, or loose ends: ${JSON.stringify(ROSTER_DATA)}`;
+        }
+
+        function buildOptimizePrompt() {
+            return `Recalculate escalation paths to clean communication routing loops. Return optimized JSON schemas: ${JSON.stringify(ROSTER_DATA)}`;
+        }
+
+        document.getElementById('send-btn').addEventListener('click', async () => {
+            const input = document.getElementById('chat-input');
+            const query = input.value.trim();
+            if (!query) return;
+
+            const chatHistory = document.getElementById('chat-history');
+            const userMsg = document.createElement('div');
+            userMsg.className = 'p-3 bg-panelLight/60 border border-slate-800 rounded-lg text-slate-100 text-xs text-right font-medium self-end';
+            userMsg.textContent = query;
+            chatHistory.appendChild(userMsg);
+
+            input.value = '';
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+            showToast('Querying swarm systems...', 'info');
+
+            const answer = await queryGemini(query, false);
+            if (answer) {
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'p-3 bg-signal/5 border border-signal/20 rounded-lg text-slate-300 text-xs leading-relaxed';
+                aiMsg.innerHTML = `<span class="text-signal font-semibold block mb-1">Consultant Response:</span> ${answer}`;
+                chatHistory.appendChild(aiMsg);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+                writeToConsole(`[CONSULTATION]: Answer streamed successfully.`);
+            }
+        });
+
+        document.getElementById('architect-btn').addEventListener('click', async () => {
+            const input = document.getElementById('architect-input');
+            const prompt = input.value.trim();
+            if (!prompt) return;
+
+            showToast('Drafting model layout structures...', 'info');
+            const newRoster = await queryGemini(prompt, true);
+
+            if (newRoster && newRoster.guilds) {
+                ROSTER_DATA.guilds = newRoster.guilds;
+                parseNodesFromRoster();
+                realignNodes();
+                await saveRosterToDatabase(ROSTER_DATA);
+                input.value = '';
+            }
+        });
+
+        document.getElementById('audit-btn').addEventListener('click', async () => {
+            showToast('Scanning network vectors...', 'info');
+            const response = await queryGemini(buildAuditPrompt(), false);
+
+            if (response) {
+                switchTab('chat');
+                const chatHistory = document.getElementById('chat-history');
+                const auditMsg = document.createElement('div');
+                auditMsg.className = 'p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg text-slate-300 text-xs leading-relaxed';
+                auditMsg.innerHTML = `<span class="text-amber-400 font-semibold block mb-1"><i class="fa-solid fa-stethoscope"></i> Roster Audit Log:</span> ${response}`;
+                chatHistory.appendChild(auditMsg);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+                showToast('Audit complete! Logs posted to Consultant feed.', 'success');
+                writeToConsole(`[DIAGNOSTICS]: Completed diagnostic matrix scans on active network.`);
+            }
+        });
+
+        document.getElementById('optimize-btn').addEventListener('click', async () => {
+            showToast('Optimizing routing structures...', 'info');
+            const optimizedRoster = await queryGemini(buildOptimizePrompt(), true);
+
+            if (optimizedRoster && optimizedRoster.guilds) {
+                ROSTER_DATA.guilds = optimizedRoster.guilds;
+                parseNodesFromRoster();
+                realignNodes();
+                await saveRosterToDatabase(ROSTER_DATA);
+                writeToConsole(`[ROUTING]: Optimization metrics applied cleanly.`);
+            }
+        });
+
+        window.onload = async function() {
+            resizeCanvas();
+            await fetchRoster();
+            canvasAnimationLoop();
+        };
+    </script>
+</body>
+</html>
