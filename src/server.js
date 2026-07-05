@@ -65,3 +65,5 @@ app.post('/api/agents', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`WorldForge Service Engine active on port ${PORT}`);
 });
+
+module.exports = app;
