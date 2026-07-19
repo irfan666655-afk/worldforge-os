@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assets/asset-library-schema.json",
+  "title": "COS Studio-Level Asset Library",
+  "description": "Cross-project memory. Distinct from a single project's Project Memory (see assets/ufdm-schema-template.json): entries here are promoted, never written directly, per Rule 12 and Rule 9. Owned operationally by Asset Librarian; within-project counterpart is Asset Manager (references/agent-roster.md). v3.1: promotedBy and integrations.ownerAgent moved into required (const pins were unenforced), libraryVersion semver pattern added — per lint_worldforge.py findings.",
+  "type": "object",
+  "properties": {
+    "libraryVersion": {
+      "type": "string",
+      "description": "Semver for the library file itself, bumped on any promotion/demotion.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "characters": {
+      "type": "array",
+      "description": "Locked character canon promoted from a project's Character Designer output.",
+      "items": {
+        "$ref": "#/$defs/promotedAsset"
+      }
+    },
+    "environments": {
+      "type": "array",
+      "description": "Locked environment/location canon promoted from Environment Designer output.",
+      "items": {
+        "$ref": "#/$defs/promotedAsset"
+      }
+    },
+    "doctrine": {
+      "type": "object",
+      "description": "Studio-level brand/visual/tonal doctrine. Read by Brand Guardian to check any deliverable regardless of which Guild produced it.",
+      "properties": {
+        "colorSystem": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Named hex values, e.g. from Brand & Identity Guild or a Film Bible's color script."
+        },
+        "typeSystem": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "toneNotes": {
+          "type": "string",
+          "description": "Prose doctrine — voice, register, non-negotiables."
+        },
+        "voiceCanon": {
+          "type": "array",
+          "description": "Locked AI-voice-model + direction pairs per character, owned by Voice Director within a project, promoted here for cross-project reuse.",
+          "items": {
+            "$ref": "#/$defs/promotedAsset"
+          }
+        }
+      }
+    },
+    "uiSystems": {
+      "type": "array",
+      "description": "Reusable UI component systems or 3D interactive patterns promoted from Web/Interactive, UI & 3D Studio work (references/web-3d-studio.md), per that file's 'Relationship to Asset Library' section.",
+      "items": {
+        "$ref": "#/$defs/promotedAsset"
+      }
+    },
+    "lessonsLearned": {
+      "type": "array",
+      "description": "Studio-level lessons from Stage 9 (Learning), Research Agent findings general enough to apply beyond one project, and Business Operations Lead process fixes. NOT process SOPs — those belong to Knowledge Librarian's separate store, kept out of this file on purpose (see references/business-ops-guild.md).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sourceProjectId": {
+            "type": "string"
+          },
+          "sourceAgent": {
+            "type": "string",
+            "description": "Which agent's finding this originated from, e.g. 'Research Agent', 'QA / Continuity Supervisor'."
+          },
+          "finding": {
+            "type": "string"
+          },
+          "dateRecorded": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "id",
+          "finding",
+          "sourceAgent",
+          "dateRecorded"
+        ]
+      }
+    },
+    "integrations": {
+      "type": "array",
+      "description": "External API/plugin connections registered by Plugin/Integration Engineer (references/business-ops-guild.md). Additive only — per that file's 'Plugin architecture principle,' an entry here should never require a change to the Stage Pipeline, UFDM schema, or Guild definitions to function.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string",
+            "description": "What this plugs into and which agent/Guild consumes it, e.g. 'live analytics data for Growth Strategist'."
+          },
+          "ownerAgent": {
+            "type": "string",
+            "const": "Plugin/Integration Engineer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "active",
+              "deprecated"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "purpose",
+          "status",
+          "ownerAgent"
+        ]
+      }
+    },
+    "modelRoutingHistory": {
+      "type": "array",
+      "description": "Studio-level record of model deprecations/switches (Rule 11), so a new project's Model Router check starts from institutional memory rather than zero.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "deprecated",
+              "capability-change",
+              "cost-change",
+              "adopted"
+            ]
+          },
+          "dateRecorded": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "event",
+          "dateRecorded"
+        ]
+      }
+    },
+    "decisionLedger": {
+      "type": "array",
+      "description": "Studio-level decisions with cross-project consequence — every promotion (Rule 12), every tie broken by Creative Director under Rule 13. Project-local decisions stay in that project's own UFDM decisionRecords; only decisions that change what future projects inherit get logged here.",
+      "items": {
+        "$ref": "#/$defs/decisionRecord"
+      }
+    }
+  },
+  "required": [
+    "libraryVersion",
+    "characters",
+    "environments",
+    "doctrine",
+    "decisionLedger"
+  ],
+  "$defs": {
+    "promotedAsset": {
+      "type": "object",
+      "description": "Any asset promoted from a project's Project Memory into studio-level canon. Never written silently — promotedBy/decisionRecordId are mandatory so a promotion is always traceable to the Rule 12 decision that authorized it.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "assetType": {
+          "type": "string",
+          "enum": [
+            "character",
+            "environment",
+            "voice",
+            "ui-system",
+            "color-doctrine",
+            "other"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "fingerprint": {
+          "type": "string",
+          "description": "The locked fingerprint checked against every new batch per references/asset-fingerprinting.md — a hash, embedding reference, or canonical description, depending on what Asset Manager's within-project tooling produces."
+        },
+        "sourceProjectId": {
+          "type": "string"
+        },
+        "promotedBy": {
+          "type": "string",
+          "const": "Asset Librarian"
+        },
+        "decisionRecordId": {
+          "type": "string",
+          "description": "Foreign key into decisionLedger — the Rule 12 promotion decision. Required; a promotedAsset with no matching decision record is a schema violation, not just a style issue."
+        },
+        "projectsUsingThisAsset": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Reuse tracking — which projects currently reference this asset, e.g. sharing a character between two projects in the same world."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "demoted",
+            "superseded"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "assetType",
+        "fingerprint",
+        "sourceProjectId",
+        "decisionRecordId",
+        "status",
+        "promotedBy"
+      ]
+    },
+    "decisionRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "promotion",
+            "demotion",
+            "tie-break",
+            "doctrine-change"
+          ]
+        },
+        "positions": {
+          "type": "array",
+          "description": "One entry per party to a disagreement, for tie-break records — the 'state both positions in one line each' step in Rule 13, kept rather than smoothed over.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "position": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent",
+              "position"
+            ]
+          }
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "resolvedBy": {
+          "type": "string",
+          "description": "Almost always 'Creative Director' per Rule 13, but recorded explicitly rather than assumed."
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "type",
+        "resolution",
+        "resolvedBy"
+      ]
+    }
+  }
+}
