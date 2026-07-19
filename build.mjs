@@ -21,6 +21,7 @@ const CONFIG = {
   manifest: [
     "vendor-loader.js",
     "wf-recovery.v1.js",
+    "wf-event-chain.v1.js",
     "kernel-adapter.js",
     "wfkernel-p2-ext.v1.2.js",
     "wf-ufdm-components.v1.js",
@@ -176,11 +177,17 @@ function buildBundle() {
   }).join("\n");
   const kernelSrc = CONFIG.kernel ? norm(readFileSync(CONFIG.kernel, "utf8")) : "";
   const hash = sha256(body + "\n/* WF-CSS */\n" + cssText + "\n/* WF-KERNEL */\n" + kernelSrc);
-  return { bundle: `/* WF-BUNDLE-HASH sha256:${hash} */\n"use strict";\n` + body, hash, cssText, kernelSrc };
+  // G5 (SELF-1): per-block hashes the runtime can reconstruct from its own
+  // <script> textContent (the folded determinism hash above cannot be).
+  // BOTH executable blocks are covered — a kernel-only tamper booting clean
+  // was the negative-test finding that forced the second hash.
+  const bodyHash = sha256(body);
+  const kernelHash = sha256(kernelSrc);
+  return { bundle: `/* WF-BUNDLE-HASH sha256:${hash} */\n"use strict";\n` + body, hash, bodyHash, kernelHash, cssText, kernelSrc };
 }
 
 if (cmd === "--bundle") {
-  const { bundle, hash, cssText, kernelSrc } = buildBundle();
+  const { bundle, hash, bodyHash, kernelHash, cssText, kernelSrc } = buildBundle();
   const shell = norm(readFileSync(CONFIG.shell, "utf8"));
   const re = /(<!--\s*WF:BUNDLE:BEGIN\s*-->)[\s\S]*?(<!--\s*WF:BUNDLE:END\s*-->)/;
   if (!re.test(shell)) die(CONFIG.shell + " missing WF:BUNDLE markers");
@@ -190,9 +197,13 @@ if (cmd === "--bundle") {
   if (kernelSrc && !kernelRe.test(shell)) die(CONFIG.shell + " missing WF:KERNEL markers");
   // Function replacer: replacement STRINGS interpret $-patterns ($&, $1…),
   // and bundled source may legitimately contain them. Never splice with a string.
-  let out = shell.replace(re, (m, open, close) => `${open}\n<script>\n${bundle}\n</script>\n${close}`);
+  let out = shell.replace(re, (m, open, close) => `${open}\n<script data-wf="bundle">\n${bundle}\n</script>\n${close}`);
   if (cssText) out = out.replace(cssRe, (m, open, close) => `${open}\n<style>\n${cssText}\n</style>\n${close}`);
-  if (kernelSrc) out = out.replace(kernelRe, (m, open, close) => `${open}\n<script>\n${kernelSrc}\n</script>\n${close}`);
+  if (kernelSrc) out = out.replace(kernelRe, (m, open, close) => `${open}\n<script data-wf="kernel">\n${kernelSrc}\n</script>\n${close}`);
+  const selfRe = /(<!--\s*WF:SELFCHECK:BEGIN\s*-->)[\s\S]*?(<!--\s*WF:SELFCHECK:END\s*-->)/;
+  if (selfRe.test(out))
+    out = out.replace(selfRe, (m, open, close) =>
+      `${open}\n<script>window.__WF_SELFCHECK__=${JSON.stringify({ bundle: bodyHash, kernel: kernelHash })};</script>\n${close}`);
   writeFileSync(CONFIG.out, out);
   ok(`built ${CONFIG.out} · bundle sha256:${hash.slice(0, 16)}…`);
 }

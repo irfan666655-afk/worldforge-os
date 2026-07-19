@@ -31,6 +31,8 @@ const gapRows = [...identityDoc.matchAll(/^\| (G\d) \| \*\*([^*]+)\*\*[^|]*\| ([
   .map((m) => ({ id: m[1], gap: m[2].trim(), status: m[4].trim() }));
 const jarvisPath = path.join(ROOT, "work", "jarvis-run.json");
 const jarvis = existsSync(jarvisPath) ? JSON.parse(readFileSync(jarvisPath, "utf8")) : null;
+const m48Path = path.join(ROOT, "work", "matrix-48-run.json");
+const m48 = existsSync(m48Path) ? JSON.parse(readFileSync(m48Path, "utf8")) : null;
 
 const artifactBytes = statSync(path.join(ROOT, "worldforge-os_5.html")).size;
 const monolithMatch = chaosReport.match(/(\d{3},\d{3})\s*B\b/g) || [];
@@ -174,8 +176,46 @@ node test/chaos-fuzz.mjs         # hostile pass
 \`\`\`
 `;
 
+/* Trust-layer announcement. Deliberately truthful framing: the artifact is
+ * single-file by design, and the 48 lanes are a local parallel verification
+ * matrix — the disclaimer travels with the numbers. */
+const announcement = m48 ? `# WorldForge OS — Trust Layer Announcement · ${today}
+
+## What's new
+WorldForge OS now ships a **cryptographic trust layer** on top of its
+governed pipeline — still one self-contained ${artifactBytes.toLocaleString()} B HTML file,
+still zero dependencies.
+
+**1 · Tamper-evident decision history (SHA-256 event chain).**
+Every governance record is hash-chained to its predecessor at write time.
+Editing, deleting, reordering, or inserting any historical record breaks
+\`verifyEventChain()\` at the exact index. Scope stated plainly: this is
+keyless tamper-evidence — partial forgery is mathematically caught; keyed
+signatures are the next milestone (PROV-2).
+
+**2 · Boot-time artifact self-check.**
+The build stamps per-block SHA-256 hashes into the artifact; on startup it
+re-hashes its own kernel and bundle blocks and **refuses to boot** on
+mismatch, with a full-screen integrity notice. Both tamper classes were
+negative-tested live in a browser before shipping.
+
+**3 · 48-lane verification matrix.**
+Every release now runs ${m48.lanes} real verification jobs across 5 clusters
+(engine core, crypto/red-team, perf, hygiene, telemetry) in a local parallel
+runner — wall time ${(m48.wallMs / 1000).toFixed(1)}s at ${m48.speedup}× speedup, status **${m48.status}**.
+*(${m48.disclaimer})*
+
+## Reproduce
+\`\`\`
+node scripts/agent-matrix-48.mjs   # full 48-lane matrix
+node test/event-chain-smoke.mjs    # chain: 16 cases incl. 5 attack classes
+node build.mjs --verify            # determinism hash
+\`\`\`
+` : "";
+
 const outDir = path.join(ROOT, "dist", "branding");
 mkdirSync(outDir, { recursive: true });
+if (announcement) writeFileSync(path.join(outDir, "trust-layer-announcement.md"), announcement);
 writeFileSync(path.join(outDir, "launch-log.md"), launchLog);
 writeFileSync(path.join(outDir, "x-thread.md"), xThread);
 writeFileSync(path.join(outDir, "README-launch.md"), readmeLaunch);

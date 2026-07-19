@@ -88,6 +88,9 @@
       p2kernel = adapter.installP2(g.WFKernelP2Ext, {
         pipeline: pipelineCanon, roster: rosterCanon, storage: storageAdapter
       });
+      // G2/PROV-1: chain governance records as they are appended. Must come
+      // after installP2 — it wraps the ext's recordDecision.
+      if (g.WFEventChain) g.WFEventChain.install(p2kernel);
     }
 
     /* ---- mode decision (sole decider) ---- */

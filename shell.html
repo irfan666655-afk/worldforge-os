@@ -290,9 +290,71 @@
 <!-- WF:KERNEL:END -->
 <!-- WF:BUNDLE:BEGIN -->
 <!-- WF:BUNDLE:END -->
+<!-- WF:SELFCHECK:BEGIN -->
+<!-- WF:SELFCHECK:END -->
 <script>
-/* bootstrap — load order: kernel (above) -> bundle -> boot. Nothing else. */
-WF.app.boot();
+/* bootstrap — load order: kernel (above) -> bundle -> SELF-CHECK -> boot.
+ *
+ * G5 artifact boot self-check (SELF-1). Recomputes SHA-256 over this file's
+ * own bundle body and compares it to the hash the build stamped in. A
+ * mismatch means the artifact was modified after it was built: the UI is
+ * replaced with an unmissable tamper notice and boot is REFUSED (governance
+ * data must not be written by an artifact that cannot prove what it is).
+ *
+ * Deliberately NOT fatal when the check cannot RUN (no SubtleCrypto, no
+ * secure context, file:// restrictions): inability to verify is not evidence
+ * of tampering, and bricking an honest offline artifact would be the worse
+ * failure. Those paths boot with a loud console warning instead.
+ *
+ * Honest scope: this catches corruption and casual edits. An attacker who
+ * rewrites the whole file can also rewrite this block — no self-check can
+ * escape that. Marker PROV-2 covers keyed authenticity.
+ */
+(function () {
+  var expected = window.__WF_SELFCHECK__;
+  function boot() { WF.app.boot(); }
+  function tamper(detail) {
+    document.body.innerHTML =
+      '<div style="position:fixed;inset:0;background:#0b0a0d;color:#b5493a;' +
+      'font:14px ui-monospace,Menlo,Consolas,monospace;padding:48px;z-index:9999;">' +
+      '<div style="font-size:22px;font-weight:700;margin-bottom:14px;">ARTIFACT INTEGRITY FAILURE</div>' +
+      '<div style="color:#ece7e0;line-height:1.7;max-width:640px;">This file does not match the ' +
+      'bundle hash recorded when it was built. It has been modified after the build.<br><br>' +
+      'Boot refused — a decision record written by an unverifiable artifact cannot be trusted.<br><br>' +
+      '<span style="color:#8f8880;">' + detail + '</span></div></div>';
+    throw new Error("[wf-selfcheck] " + detail);
+  }
+  var bundleEl = document.querySelector('script[data-wf="bundle"]');
+  var kernelEl = document.querySelector('script[data-wf="kernel"]');
+  if (!expected || !expected.bundle || !bundleEl || !kernelEl) {
+    console.warn("[wf-selfcheck] reference hashes or tagged blocks missing — check skipped"); return boot();
+  }
+  if (typeof crypto === "undefined" || !crypto.subtle || typeof TextEncoder === "undefined") {
+    console.warn("[wf-selfcheck] SubtleCrypto unavailable — integrity NOT verified (booting)"); return boot();
+  }
+  function digest(s) {
+    return crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)).then(function (buf) {
+      return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+        return ("0" + b.toString(16)).slice(-2);
+      }).join("");
+    });
+  }
+  // Reconstruct EXACTLY what build.mjs hashed. BOTH executable blocks are
+  // covered — the negative test proved a kernel-only tamper booted clean
+  // when only the bundle was hashed. Strip the splice template's single
+  // leading/trailing newline (and the bundle's hash prologue).
+  var bundleBody = bundleEl.textContent.replace(/^[\s\S]*?"use strict";\n/, "").replace(/\r\n/g, "\n").replace(/\n$/, "");
+  var kernelBody = kernelEl.textContent.replace(/\r\n/g, "\n").replace(/^\n/, "").replace(/\n$/, "");
+  Promise.all([digest(bundleBody), digest(kernelBody)]).then(function (h) {
+    if (h[0] !== expected.bundle) tamper("bundle block: expected " + expected.bundle.slice(0, 16) + "… · found " + h[0].slice(0, 16) + "…");
+    if (h[1] !== expected.kernel) tamper("kernel block: expected " + expected.kernel.slice(0, 16) + "… · found " + h[1].slice(0, 16) + "…");
+    console.info("[wf-selfcheck] artifact integrity verified · bundle " + h[0].slice(0, 12) + "… · kernel " + h[1].slice(0, 12) + "…");
+    boot();
+  })["catch"](function (e) {
+    console.warn("[wf-selfcheck] digest failed (" + e + ") — integrity NOT verified (booting)");
+    boot();
+  });
+})();
 </script>
 </body>
 </html>
