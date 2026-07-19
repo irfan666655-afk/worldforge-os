@@ -1,0 +1,298 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+
+  :root{
+    --obsidian:#0b0a0d;
+    --obsidian-2:#141218;
+    --panel:#18151b;
+    --line:#2c2733;
+    --copper:#c1652b;
+    --copper-dim:#6b3819;
+    --spark:#f2c879;
+    --slate:#4a5568;
+    --slate-dim:#2c3340;
+    --ink:#ece7e0;
+    --ink-dim:#8f8880;
+    --danger:#b5493a;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:var(--obsidian); color:var(--ink); font-family:-apple-system,'Segoe UI',Roboto,sans-serif; overflow:hidden; }
+  .mono{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; }
+  .display{ font-family:Impact,'Arial Narrow',Haettenschweiler,sans-serif; font-weight:800; letter-spacing:0.02em; }
+
+  #stage{ position:absolute; inset:0; cursor:grab; }
+  #stage.dragging{ cursor:grabbing; }
+
+  /* ---------- top nav ---------- */
+  #nav{
+    position:absolute; top:0; left:0; right:0; z-index:20;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:20px 28px; pointer-events:none;
+  }
+  #nav .brand{ pointer-events:auto; }
+  #nav .brand .title{ font-size:22px; color:var(--spark); text-transform:uppercase; line-height:1; }
+  #nav .brand .sub{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; letter-spacing:0.16em; color:var(--ink-dim); text-transform:uppercase; margin-top:3px; }
+  #modes{ pointer-events:auto; display:flex; gap:2px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:3px; }
+  #modes button{
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    background:none; border:none; color:var(--ink-dim); padding:9px 18px; border-radius:6px; cursor:pointer;
+  }
+  #modes button.active{ background:var(--copper); color:#1a1310; }
+  #modes button:hover:not(.active){ color:var(--ink); }
+
+  #hint{ position:absolute; bottom:18px; left:28px; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; color:var(--ink-dim); letter-spacing:0.04em; z-index:5; pointer-events:none; }
+
+  /* ---------- explore panel (agent inspect) ---------- */
+  #agent-panel{
+    position:absolute; top:0; right:0; height:100%; width:340px;
+    background:linear-gradient(180deg, var(--panel), var(--obsidian-2));
+    border-left:1px solid var(--line); padding:90px 24px 24px 24px;
+    transform:translateX(100%); transition:transform .3s cubic-bezier(.2,.8,.2,1);
+    z-index:15; overflow-y:auto;
+  }
+  #agent-panel.open{ transform:translateX(0); }
+  #agent-panel .eyebrow{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--copper); margin-bottom:6px;}
+  #agent-panel h2{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:18px; margin:0 0 16px 0; }
+  #agent-panel .field{ margin-bottom:14px; }
+  #agent-panel .field label{ display:block; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:4px; }
+  #agent-panel .field div{ font-size:13px; line-height:1.5; }
+  .close-btn{ position:absolute; top:20px; right:20px; width:26px; height:26px; border:1px solid var(--line); border-radius:50%; background:none; color:var(--ink-dim); cursor:pointer; z-index:2; }
+  .close-btn:hover{ color:var(--ink); }
+
+  /* ---------- forge floor (left rail) ---------- */
+  #forge-floor{
+    position:absolute; top:88px; left:0; bottom:0; width:320px; z-index:15;
+    padding:0 18px 18px 28px; overflow-y:auto; display:none;
+  }
+  #forge-floor.visible{ display:block; }
+  #forge-floor .section-label{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); margin:14px 0 10px 0; }
+  #start-forging{
+    width:100%; padding:13px; background:var(--copper); color:#1a1310; border:none; border-radius:8px;
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+    cursor:pointer;
+  }
+  #start-forging:hover{ background:#d6742f; }
+  .project-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px; cursor:pointer;
+    transition:border-color .15s;
+  }
+  .project-card:hover{ border-color:var(--copper-dim); }
+  .project-card.selected{ border-color:var(--copper); background:#1e181a; }
+  .project-card .pname{ font-size:13.5px; font-weight:600; color:var(--ink); margin-bottom:4px; }
+  .project-card .pmeta{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.04em; }
+  .project-card .pbar{ margin-top:8px; height:3px; background:var(--slate-dim); border-radius:2px; overflow:hidden; }
+  .project-card .pbar div{ height:100%; background:var(--copper); }
+  #floor-empty{ font-size:12.5px; color:var(--ink-dim); line-height:1.6; margin-top:10px; }
+
+  /* ---------- forge detail (right panel) ---------- */
+  #forge-detail{
+    position:absolute; top:88px; right:0; bottom:0; width:380px; z-index:15;
+    padding:0 28px 24px 18px; overflow-y:auto; display:none;
+  }
+  #forge-detail.visible{ display:block; }
+  #fd-name{ font-size:24px; margin:0 0 4px 0; }
+  #fd-meta{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; margin-bottom:18px; }
+  .rail-station{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .rail-station .num{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:12px; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid var(--slate); color:var(--ink-dim); }
+  .rail-station.done .num{ background:var(--copper); border-color:var(--copper); color:#1a1310; }
+  .rail-station.current .num{ background:var(--spark); border-color:var(--spark); color:#1a1310; box-shadow:0 0 12px rgba(242,200,121,0.6); }
+  .rail-station .label{ font-size:12.5px; color:var(--ink-dim); }
+  .rail-station.done .label, .rail-station.current .label{ color:var(--ink); }
+  #advance-btn{
+    width:100%; margin-top:18px; padding:12px; background:var(--spark); color:#1a1310; border:none; border-radius:8px;
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; cursor:pointer;
+  }
+  #advance-btn:hover{ background:#ffdd94; }
+  #advance-btn:disabled{ background:var(--slate-dim); color:var(--ink-dim); cursor:default; }
+  #notes-box{
+    width:100%; margin-top:16px; background:var(--obsidian-2); border:1px solid var(--line); border-radius:8px; color:var(--ink);
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif; font-size:12.5px; padding:10px; resize:vertical; min-height:70px;
+  }
+  #save-notes{ margin-top:8px; padding:8px 14px; background:none; border:1px solid var(--line); color:var(--ink-dim); border-radius:6px; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10.5px; text-transform:uppercase; cursor:pointer; }
+  #save-notes:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  #delete-project{ margin-top:22px; padding:8px 14px; background:none; border:1px solid var(--danger); color:var(--danger); border-radius:6px; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; text-transform:uppercase; cursor:pointer; }
+  #delete-project:hover{ background:var(--danger); color:var(--ink); }
+
+  /* ---------- modal ---------- */
+  #modal-backdrop{ position:fixed; inset:0; background:rgba(11,10,13,0.75); z-index:40; display:none; align-items:center; justify-content:center; }
+  #modal-backdrop.visible{ display:flex; }
+  #modal{ width:420px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:26px; }
+  #modal h3{ margin:0 0 18px 0; font-size:20px; }
+  #modal label{ display:block; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); margin:14px 0 6px 0; }
+  #modal input, #modal select{
+    width:100%; padding:10px 12px; background:var(--obsidian-2); border:1px solid var(--line); border-radius:6px; color:var(--ink);
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif; font-size:13px;
+  }
+  #modal .modal-actions{ display:flex; gap:10px; margin-top:22px; }
+  #modal .modal-actions button{ flex:1; padding:11px; border-radius:8px; border:none; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+  #modal .cancel{ background:none; border:1px solid var(--line); color:var(--ink-dim); }
+  #modal .confirm{ background:var(--copper); color:#1a1310; }
+  #modal .confirm:hover{ background:#d6742f; }
+  #modal .cancel:hover{ color:var(--ink); border-color:var(--ink-dim); }
+
+  #floor-shared{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9.5px; letter-spacing:.03em; color:var(--ink-dim); line-height:1.5; margin:-4px 0 12px 0; opacity:.8; }
+
+  #stepback-btn{ width:100%; margin-top:8px; padding:9px; background:none; border:1px solid var(--line); color:var(--ink-dim); border-radius:8px; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+  #stepback-btn:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  #stepback-btn:disabled{ opacity:.4; cursor:default; }
+
+  #fd-decisions .d-row{ border-bottom:1px solid var(--line); padding:9px 0; }
+  #fd-decisions .d-meta{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:3px; }
+  #fd-decisions .d-meta .d-kind-gate-pass{ color:var(--spark); }
+  #fd-decisions .d-meta .d-kind-step-back{ color:var(--danger); }
+  #fd-decisions .d-meta .d-kind-gate-override{ color:#f0b43c; } /* P4-CSS1 closed */
+  #fd-decisions .d-label{ font-size:12px; color:var(--ink); }
+  #fd-decisions .d-note{ font-size:11.5px; color:var(--ink-dim); font-style:italic; margin-top:2px; }
+  #fd-decisions .d-empty{ font-size:11.5px; color:var(--ink-dim); line-height:1.55; padding:6px 0; }
+
+  #gate-backdrop{ position:fixed; inset:0; background:rgba(11,10,13,0.75); z-index:45; display:none; align-items:center; justify-content:center; }
+  #gate-backdrop.visible{ display:flex; }
+  /* P4-UI1 override ceremony — sits above the gate modal it was launched from */
+  #override-backdrop{ position:fixed; inset:0; background:rgba(11,10,13,0.8); z-index:46; display:none; align-items:center; justify-content:center; }
+  #override-backdrop.visible{ display:flex; }
+  #gate-override-mount .panel{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:22px; width:min(460px,92vw); }
+  #gate-override-mount h3{ margin:0 0 8px; color:var(--ink); }
+  #gate-override-mount .warn{ color:var(--ink-dim); font-size:13px; line-height:1.5; }
+  #gate-override-mount label{ display:block; margin:12px 0 4px; font-size:12px; color:var(--ink-dim); }
+  #gate-override-mount input, #gate-override-mount textarea{ width:100%; box-sizing:border-box; background:var(--obsidian-2); border:1px solid var(--line); border-radius:6px; color:var(--ink); padding:8px; }
+  #gate-override-mount .findings{ color:var(--danger); font-size:12px; min-height:16px; margin-top:8px; }
+  #gate-override-mount .actions{ display:flex; gap:10px; margin-top:14px; }
+  #gate-override-mount button.danger{ background:var(--danger); border:none; color:var(--ink); border-radius:6px; padding:9px 14px; cursor:pointer; }
+  #gate{ width:440px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:26px; }
+  #gate h3{ margin:0 0 10px 0; font-size:20px; color:var(--spark); }
+  #gate p{ font-size:13px; line-height:1.6; color:var(--ink); margin:0 0 6px 0; }
+  #gate label{ display:block; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); margin:14px 0 6px 0; }
+  #gate textarea{ width:100%; background:var(--obsidian-2); border:1px solid var(--line); border-radius:6px; color:var(--ink); font-family:-apple-system,'Segoe UI',Roboto,sans-serif; font-size:13px; padding:10px 12px; resize:vertical; min-height:56px; }
+  #gate .modal-actions{ display:flex; gap:10px; margin-top:22px; }
+  #gate .modal-actions button{ flex:1; padding:11px; border-radius:8px; border:none; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+  #gate .cancel{ background:none; border:1px solid var(--line); color:var(--ink-dim); }
+  #gate .cancel:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  #gate .confirm{ background:var(--copper); color:#1a1310; }
+  #gate .confirm:hover{ background:#d6742f; }
+
+  #toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); z-index:50;
+    background:var(--panel); border:1px solid var(--copper); color:var(--ink); padding:11px 20px; border-radius:8px;
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:11.5px; opacity:0; transition:all .25s ease; pointer-events:none;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  canvas{ display:block; }
+</style>
+<!-- WF:CSS:BEGIN -->
+<!-- WF:CSS:END -->
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="nav">
+  <div class="brand">
+    <div class="title display">Worldforge <span style="color:var(--ink)">OS</span></div>
+    <div class="sub mono">v5.2 — governed foundry</div>
+  </div>
+  <div id="modes">
+    <button id="mode-explore" class="active">Explore</button>
+    <button id="mode-forge">Forge</button>
+  </div>
+</div>
+
+<div id="hint" class="mono">drag to rotate · scroll to zoom</div>
+
+<!-- EXPLORE: agent inspect panel -->
+<button class="close-btn" id="agent-close" style="display:none;">✕</button>
+<div id="agent-panel">
+  <div class="eyebrow" id="ap-guild">—</div>
+  <h2 id="ap-name">—</h2>
+  <div class="field"><label>Responsibilities</label><div id="ap-resp">—</div></div>
+  <div class="field"><label>Authority</label><div id="ap-auth" style="color:var(--copper);">—</div></div>
+  <div class="field"><label>Escalates to</label><div id="ap-esc" style="color:var(--spark);">—</div></div>
+  <div class="field"><label>Memory / Validation</label><div id="ap-mem">—</div></div>
+</div>
+
+<!-- FORGE: floor (left, project list) -->
+<div id="forge-floor">
+  <button id="start-forging">+ Start Forging</button>
+  <div class="section-label mono">Live on the floor</div>
+  <div id="floor-shared">The floor is shared: anything forged here is visible to everyone who opens this artifact.</div>
+  <div id="project-list"></div>
+  <div id="floor-empty">Nothing forged yet. Every project anyone starts here shows up on this floor, for everyone.</div>
+</div>
+
+<!-- FORGE: detail (right, selected project) -->
+<div id="forge-detail">
+  <h2 id="fd-name" class="display">—</h2>
+  <div id="fd-meta" class="mono">—</div>
+  <div id="fd-rail"></div>
+  <button id="advance-btn">Advance to next stage</button>
+  <button id="stepback-btn">Step back a stage</button>
+  <div class="section-label mono" style="margin-top:22px;">Decision record</div>
+  <div id="fd-decisions"></div>
+  <!-- P2 visual surface (wf-ufdm-visual.v1) — mounted by app.js while a project is bound -->
+  <section id="ufdm-surface"></section>
+  <div>
+    <label class="mono" style="display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);margin:18px 0 6px;">Notes</label>
+    <textarea id="notes-box" placeholder="Working notes for this project..."></textarea>
+    <button id="save-notes">Save notes</button>
+  </div>
+  <button id="delete-project">Strike from the floor</button>
+</div>
+
+<!-- MODAL: new project -->
+<div id="modal-backdrop">
+  <div id="modal">
+    <h3 class="display">Start Forging</h3>
+    <label>Your name</label>
+    <input id="in-forgername" type="text" placeholder="What should we call the forger?" maxlength="40" />
+    <label>Project name</label>
+    <input id="in-projectname" type="text" placeholder="e.g. Vision In Print" maxlength="60" />
+    <label>Project type</label>
+    <select id="in-type">
+      <option value="Short Film">Short Film</option>
+      <option value="Brand System">Brand System</option>
+      <option value="Web / 3D Build">Web / 3D Build</option>
+      <option value="Game">Game</option>
+      <option value="Commercial Launch">Commercial Launch</option>
+      <option value="Quick Clip">Quick Clip</option>
+    </select>
+    <div class="modal-actions">
+      <button class="cancel" id="modal-cancel">Cancel</button>
+      <button class="confirm" id="modal-confirm">Forge it</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: gates & recorded reversals -->
+<div id="gate-backdrop">
+  <div id="gate">
+    <h3 class="display" id="gate-title">—</h3>
+    <p id="gate-text">—</p>
+    <label id="gate-reason-label" for="gate-reason">Reason (goes on the record)</label>
+    <textarea id="gate-reason" placeholder="Why?"></textarea>
+    <div class="modal-actions">
+      <button class="cancel" id="gate-cancel">Not yet</button>
+      <button class="cancel" id="gate-override-btn" hidden>Override…</button>
+      <button class="confirm" id="gate-confirm">Confirm — on the record</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: gate override ceremony (P4-UI1, ratified 2026-07-18) -->
+<div id="override-backdrop"><div id="gate-override-mount"></div></div>
+
+<div id="toast"></div>
+
+<div id="roster-mount" hidden></div>
+<!-- WF:KERNEL:BEGIN -->
+<!-- WF:KERNEL:END -->
+<!-- WF:BUNDLE:BEGIN -->
+<!-- WF:BUNDLE:END -->
+<script>
+/* bootstrap — load order: kernel (above) -> bundle -> boot. Nothing else. */
+WF.app.boot();
+</script>
+</body>
+</html>

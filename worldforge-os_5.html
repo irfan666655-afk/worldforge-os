@@ -1,0 +1,2917 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+
+  :root{
+    --obsidian:#0b0a0d;
+    --obsidian-2:#141218;
+    --panel:#18151b;
+    --line:#2c2733;
+    --copper:#c1652b;
+    --copper-dim:#6b3819;
+    --spark:#f2c879;
+    --slate:#4a5568;
+    --slate-dim:#2c3340;
+    --ink:#ece7e0;
+    --ink-dim:#8f8880;
+    --danger:#b5493a;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:var(--obsidian); color:var(--ink); font-family:-apple-system,'Segoe UI',Roboto,sans-serif; overflow:hidden; }
+  .mono{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; }
+  .display{ font-family:Impact,'Arial Narrow',Haettenschweiler,sans-serif; font-weight:800; letter-spacing:0.02em; }
+
+  #stage{ position:absolute; inset:0; cursor:grab; }
+  #stage.dragging{ cursor:grabbing; }
+
+  /* ---------- top nav ---------- */
+  #nav{
+    position:absolute; top:0; left:0; right:0; z-index:20;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:20px 28px; pointer-events:none;
+  }
+  #nav .brand{ pointer-events:auto; }
+  #nav .brand .title{ font-size:22px; color:var(--spark); text-transform:uppercase; line-height:1; }
+  #nav .brand .sub{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; letter-spacing:0.16em; color:var(--ink-dim); text-transform:uppercase; margin-top:3px; }
+  #modes{ pointer-events:auto; display:flex; gap:2px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:3px; }
+  #modes button{
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    background:none; border:none; color:var(--ink-dim); padding:9px 18px; border-radius:6px; cursor:pointer;
+  }
+  #modes button.active{ background:var(--copper); color:#1a1310; }
+  #modes button:hover:not(.active){ color:var(--ink); }
+
+  #hint{ position:absolute; bottom:18px; left:28px; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; color:var(--ink-dim); letter-spacing:0.04em; z-index:5; pointer-events:none; }
+
+  /* ---------- explore panel (agent inspect) ---------- */
+  #agent-panel{
+    position:absolute; top:0; right:0; height:100%; width:340px;
+    background:linear-gradient(180deg, var(--panel), var(--obsidian-2));
+    border-left:1px solid var(--line); padding:90px 24px 24px 24px;
+    transform:translateX(100%); transition:transform .3s cubic-bezier(.2,.8,.2,1);
+    z-index:15; overflow-y:auto;
+  }
+  #agent-panel.open{ transform:translateX(0); }
+  #agent-panel .eyebrow{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--copper); margin-bottom:6px;}
+  #agent-panel h2{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:18px; margin:0 0 16px 0; }
+  #agent-panel .field{ margin-bottom:14px; }
+  #agent-panel .field label{ display:block; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:4px; }
+  #agent-panel .field div{ font-size:13px; line-height:1.5; }
+  .close-btn{ position:absolute; top:20px; right:20px; width:26px; height:26px; border:1px solid var(--line); border-radius:50%; background:none; color:var(--ink-dim); cursor:pointer; z-index:2; }
+  .close-btn:hover{ color:var(--ink); }
+
+  /* ---------- forge floor (left rail) ---------- */
+  #forge-floor{
+    position:absolute; top:88px; left:0; bottom:0; width:320px; z-index:15;
+    padding:0 18px 18px 28px; overflow-y:auto; display:none;
+  }
+  #forge-floor.visible{ display:block; }
+  #forge-floor .section-label{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); margin:14px 0 10px 0; }
+  #start-forging{
+    width:100%; padding:13px; background:var(--copper); color:#1a1310; border:none; border-radius:8px;
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+    cursor:pointer;
+  }
+  #start-forging:hover{ background:#d6742f; }
+  .project-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px; cursor:pointer;
+    transition:border-color .15s;
+  }
+  .project-card:hover{ border-color:var(--copper-dim); }
+  .project-card.selected{ border-color:var(--copper); background:#1e181a; }
+  .project-card .pname{ font-size:13.5px; font-weight:600; color:var(--ink); margin-bottom:4px; }
+  .project-card .pmeta{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.04em; }
+  .project-card .pbar{ margin-top:8px; height:3px; background:var(--slate-dim); border-radius:2px; overflow:hidden; }
+  .project-card .pbar div{ height:100%; background:var(--copper); }
+  #floor-empty{ font-size:12.5px; color:var(--ink-dim); line-height:1.6; margin-top:10px; }
+
+  /* ---------- forge detail (right panel) ---------- */
+  #forge-detail{
+    position:absolute; top:88px; right:0; bottom:0; width:380px; z-index:15;
+    padding:0 28px 24px 18px; overflow-y:auto; display:none;
+  }
+  #forge-detail.visible{ display:block; }
+  #fd-name{ font-size:24px; margin:0 0 4px 0; }
+  #fd-meta{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; margin-bottom:18px; }
+  .rail-station{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .rail-station .num{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:12px; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid var(--slate); color:var(--ink-dim); }
+  .rail-station.done .num{ background:var(--copper); border-color:var(--copper); color:#1a1310; }
+  .rail-station.current .num{ background:var(--spark); border-color:var(--spark); color:#1a1310; box-shadow:0 0 12px rgba(242,200,121,0.6); }
+  .rail-station .label{ font-size:12.5px; color:var(--ink-dim); }
+  .rail-station.done .label, .rail-station.current .label{ color:var(--ink); }
+  #advance-btn{
+    width:100%; margin-top:18px; padding:12px; background:var(--spark); color:#1a1310; border:none; border-radius:8px;
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; cursor:pointer;
+  }
+  #advance-btn:hover{ background:#ffdd94; }
+  #advance-btn:disabled{ background:var(--slate-dim); color:var(--ink-dim); cursor:default; }
+  #notes-box{
+    width:100%; margin-top:16px; background:var(--obsidian-2); border:1px solid var(--line); border-radius:8px; color:var(--ink);
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif; font-size:12.5px; padding:10px; resize:vertical; min-height:70px;
+  }
+  #save-notes{ margin-top:8px; padding:8px 14px; background:none; border:1px solid var(--line); color:var(--ink-dim); border-radius:6px; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10.5px; text-transform:uppercase; cursor:pointer; }
+  #save-notes:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  #delete-project{ margin-top:22px; padding:8px 14px; background:none; border:1px solid var(--danger); color:var(--danger); border-radius:6px; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; text-transform:uppercase; cursor:pointer; }
+  #delete-project:hover{ background:var(--danger); color:var(--ink); }
+
+  /* ---------- modal ---------- */
+  #modal-backdrop{ position:fixed; inset:0; background:rgba(11,10,13,0.75); z-index:40; display:none; align-items:center; justify-content:center; }
+  #modal-backdrop.visible{ display:flex; }
+  #modal{ width:420px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:26px; }
+  #modal h3{ margin:0 0 18px 0; font-size:20px; }
+  #modal label{ display:block; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); margin:14px 0 6px 0; }
+  #modal input, #modal select{
+    width:100%; padding:10px 12px; background:var(--obsidian-2); border:1px solid var(--line); border-radius:6px; color:var(--ink);
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif; font-size:13px;
+  }
+  #modal .modal-actions{ display:flex; gap:10px; margin-top:22px; }
+  #modal .modal-actions button{ flex:1; padding:11px; border-radius:8px; border:none; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+  #modal .cancel{ background:none; border:1px solid var(--line); color:var(--ink-dim); }
+  #modal .confirm{ background:var(--copper); color:#1a1310; }
+  #modal .confirm:hover{ background:#d6742f; }
+  #modal .cancel:hover{ color:var(--ink); border-color:var(--ink-dim); }
+
+  #floor-shared{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9.5px; letter-spacing:.03em; color:var(--ink-dim); line-height:1.5; margin:-4px 0 12px 0; opacity:.8; }
+
+  #stepback-btn{ width:100%; margin-top:8px; padding:9px; background:none; border:1px solid var(--line); color:var(--ink-dim); border-radius:8px; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+  #stepback-btn:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  #stepback-btn:disabled{ opacity:.4; cursor:default; }
+
+  #fd-decisions .d-row{ border-bottom:1px solid var(--line); padding:9px 0; }
+  #fd-decisions .d-meta{ font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:3px; }
+  #fd-decisions .d-meta .d-kind-gate-pass{ color:var(--spark); }
+  #fd-decisions .d-meta .d-kind-step-back{ color:var(--danger); }
+  #fd-decisions .d-meta .d-kind-gate-override{ color:#f0b43c; } /* P4-CSS1 closed */
+  #fd-decisions .d-label{ font-size:12px; color:var(--ink); }
+  #fd-decisions .d-note{ font-size:11.5px; color:var(--ink-dim); font-style:italic; margin-top:2px; }
+  #fd-decisions .d-empty{ font-size:11.5px; color:var(--ink-dim); line-height:1.55; padding:6px 0; }
+
+  #gate-backdrop{ position:fixed; inset:0; background:rgba(11,10,13,0.75); z-index:45; display:none; align-items:center; justify-content:center; }
+  #gate-backdrop.visible{ display:flex; }
+  /* P4-UI1 override ceremony — sits above the gate modal it was launched from */
+  #override-backdrop{ position:fixed; inset:0; background:rgba(11,10,13,0.8); z-index:46; display:none; align-items:center; justify-content:center; }
+  #override-backdrop.visible{ display:flex; }
+  #gate-override-mount .panel{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:22px; width:min(460px,92vw); }
+  #gate-override-mount h3{ margin:0 0 8px; color:var(--ink); }
+  #gate-override-mount .warn{ color:var(--ink-dim); font-size:13px; line-height:1.5; }
+  #gate-override-mount label{ display:block; margin:12px 0 4px; font-size:12px; color:var(--ink-dim); }
+  #gate-override-mount input, #gate-override-mount textarea{ width:100%; box-sizing:border-box; background:var(--obsidian-2); border:1px solid var(--line); border-radius:6px; color:var(--ink); padding:8px; }
+  #gate-override-mount .findings{ color:var(--danger); font-size:12px; min-height:16px; margin-top:8px; }
+  #gate-override-mount .actions{ display:flex; gap:10px; margin-top:14px; }
+  #gate-override-mount button.danger{ background:var(--danger); border:none; color:var(--ink); border-radius:6px; padding:9px 14px; cursor:pointer; }
+  #gate{ width:440px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:26px; }
+  #gate h3{ margin:0 0 10px 0; font-size:20px; color:var(--spark); }
+  #gate p{ font-size:13px; line-height:1.6; color:var(--ink); margin:0 0 6px 0; }
+  #gate label{ display:block; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); margin:14px 0 6px 0; }
+  #gate textarea{ width:100%; background:var(--obsidian-2); border:1px solid var(--line); border-radius:6px; color:var(--ink); font-family:-apple-system,'Segoe UI',Roboto,sans-serif; font-size:13px; padding:10px 12px; resize:vertical; min-height:56px; }
+  #gate .modal-actions{ display:flex; gap:10px; margin-top:22px; }
+  #gate .modal-actions button{ flex:1; padding:11px; border-radius:8px; border:none; font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+  #gate .cancel{ background:none; border:1px solid var(--line); color:var(--ink-dim); }
+  #gate .cancel:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  #gate .confirm{ background:var(--copper); color:#1a1310; }
+  #gate .confirm:hover{ background:#d6742f; }
+
+  #toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); z-index:50;
+    background:var(--panel); border:1px solid var(--copper); color:var(--ink); padding:11px 20px; border-radius:8px;
+    font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:11.5px; opacity:0; transition:all .25s ease; pointer-events:none;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  canvas{ display:block; }
+</style>
+<!-- WF:CSS:BEGIN -->
+<style>
+/* ===== css: wf-ufdm-visual.v1.css ===== */
+/* wf-ufdm-visual.v1.css — P2 visual pass. Inline via build.mjs into shell <head>.
+   Vocabulary carried from worldforge-ufdm-mockup_2.html; tokens match shell dark theme. */
+#ufdm-surface { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+#ufdm-surface .panel { background: #14161c; border: 1px solid #262a34; border-radius: 12px; padding: 16px; }
+#ufdm-surface .panel h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8b93a7; }
+#ufdm-surface .bignum { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; color: #e8ebf2; }
+#ufdm-surface .bar { height: 8px; border-radius: 4px; background: #22262f; overflow: hidden; margin: 10px 0 6px; }
+#ufdm-surface .fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4f8cff, #7a5cff); border-radius: 4px; }
+#ufdm-surface .fill.warn { background: linear-gradient(90deg, #f0b43c, #e2543c); }
+#ufdm-surface .foot { font-size: 12px; color: #8b93a7; }
+#ufdm-surface .burnstrip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+#ufdm-surface .amt { font-size: 11px; font-variant-numeric: tabular-nums; background: #1b1f28; border: 1px solid #2a2f3b; border-radius: 999px; padding: 3px 9px; color: #b7bfd1; }
+#ufdm-surface .cats { display: flex; flex-wrap: wrap; gap: 8px; }
+#ufdm-surface .lockchip { display: inline-flex; flex-direction: column; gap: 2px; font-size: 12px; border-radius: 8px; padding: 6px 10px; border: 1px solid; }
+#ufdm-surface .lockchip .fp { font-size: 10px; opacity: .65; font-family: ui-monospace, monospace; }
+#ufdm-surface .lockchip.locked { border-color: #2e7d4f; background: #12211a; color: #7fd6a4; }
+#ufdm-surface .lockchip.unlocked { border-color: #3a4152; background: #171a22; color: #9aa3b8; }
+#ufdm-surface .lockchip.corrupt { border-color: #a53d3d; background: #241315; color: #ff9b9b; }
+#ufdm-surface .chain .arow { font-size: 13px; color: #c6cddd; padding: 7px 0; border-bottom: 1px solid #1f232d; }
+#ufdm-surface .chain .arow:last-child { border-bottom: 0; }
+#ufdm-surface .chain .id { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; border-radius: 4px; padding: 2px 6px; margin-right: 6px; background: #1b1f28; color: #8b93a7; }
+#ufdm-surface .chain .d-kind-gate-override .id { background: #2b2113; color: #f0b43c; }
+#ufdm-surface .chain .d-kind-step-back .id { background: #241315; color: #ff9b9b; }
+#ufdm-surface .chain .d-kind-gate-pass .id { background: #12211a; color: #7fd6a4; }
+/* gate-override modal (wf-gate-override.v1.js) */
+.panel.gate-override { max-width: 420px; }
+.panel.gate-override .warn { color: #f0b43c; font-size: 13px; }
+.panel.gate-override label { display: block; font-size: 12px; color: #8b93a7; margin: 10px 0 4px; }
+.panel.gate-override input, .panel.gate-override textarea { width: 100%; background: #0f1116; border: 1px solid #2a2f3b; border-radius: 8px; color: #e8ebf2; padding: 8px; font: inherit; }
+.panel.gate-override .findings { min-height: 18px; font-size: 12px; color: #f0b43c; margin-top: 8px; }
+.panel.gate-override .actions { display: flex; gap: 8px; margin-top: 12px; }
+.panel.gate-override button.danger { background: #a53d3d; border: 0; color: #fff; border-radius: 8px; padding: 8px 14px; }
+@media (prefers-reduced-motion: reduce) { #ufdm-surface * { animation: none !important; transition: none !important; } }
+
+</style>
+<!-- WF:CSS:END -->
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="nav">
+  <div class="brand">
+    <div class="title display">Worldforge <span style="color:var(--ink)">OS</span></div>
+    <div class="sub mono">v5.2 — governed foundry</div>
+  </div>
+  <div id="modes">
+    <button id="mode-explore" class="active">Explore</button>
+    <button id="mode-forge">Forge</button>
+  </div>
+</div>
+
+<div id="hint" class="mono">drag to rotate · scroll to zoom</div>
+
+<!-- EXPLORE: agent inspect panel -->
+<button class="close-btn" id="agent-close" style="display:none;">✕</button>
+<div id="agent-panel">
+  <div class="eyebrow" id="ap-guild">—</div>
+  <h2 id="ap-name">—</h2>
+  <div class="field"><label>Responsibilities</label><div id="ap-resp">—</div></div>
+  <div class="field"><label>Authority</label><div id="ap-auth" style="color:var(--copper);">—</div></div>
+  <div class="field"><label>Escalates to</label><div id="ap-esc" style="color:var(--spark);">—</div></div>
+  <div class="field"><label>Memory / Validation</label><div id="ap-mem">—</div></div>
+</div>
+
+<!-- FORGE: floor (left, project list) -->
+<div id="forge-floor">
+  <button id="start-forging">+ Start Forging</button>
+  <div class="section-label mono">Live on the floor</div>
+  <div id="floor-shared">The floor is shared: anything forged here is visible to everyone who opens this artifact.</div>
+  <div id="project-list"></div>
+  <div id="floor-empty">Nothing forged yet. Every project anyone starts here shows up on this floor, for everyone.</div>
+</div>
+
+<!-- FORGE: detail (right, selected project) -->
+<div id="forge-detail">
+  <h2 id="fd-name" class="display">—</h2>
+  <div id="fd-meta" class="mono">—</div>
+  <div id="fd-rail"></div>
+  <button id="advance-btn">Advance to next stage</button>
+  <button id="stepback-btn">Step back a stage</button>
+  <div class="section-label mono" style="margin-top:22px;">Decision record</div>
+  <div id="fd-decisions"></div>
+  <!-- P2 visual surface (wf-ufdm-visual.v1) — mounted by app.js while a project is bound -->
+  <section id="ufdm-surface"></section>
+  <div>
+    <label class="mono" style="display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);margin:18px 0 6px;">Notes</label>
+    <textarea id="notes-box" placeholder="Working notes for this project..."></textarea>
+    <button id="save-notes">Save notes</button>
+  </div>
+  <button id="delete-project">Strike from the floor</button>
+</div>
+
+<!-- MODAL: new project -->
+<div id="modal-backdrop">
+  <div id="modal">
+    <h3 class="display">Start Forging</h3>
+    <label>Your name</label>
+    <input id="in-forgername" type="text" placeholder="What should we call the forger?" maxlength="40" />
+    <label>Project name</label>
+    <input id="in-projectname" type="text" placeholder="e.g. Vision In Print" maxlength="60" />
+    <label>Project type</label>
+    <select id="in-type">
+      <option value="Short Film">Short Film</option>
+      <option value="Brand System">Brand System</option>
+      <option value="Web / 3D Build">Web / 3D Build</option>
+      <option value="Game">Game</option>
+      <option value="Commercial Launch">Commercial Launch</option>
+      <option value="Quick Clip">Quick Clip</option>
+    </select>
+    <div class="modal-actions">
+      <button class="cancel" id="modal-cancel">Cancel</button>
+      <button class="confirm" id="modal-confirm">Forge it</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: gates & recorded reversals -->
+<div id="gate-backdrop">
+  <div id="gate">
+    <h3 class="display" id="gate-title">—</h3>
+    <p id="gate-text">—</p>
+    <label id="gate-reason-label" for="gate-reason">Reason (goes on the record)</label>
+    <textarea id="gate-reason" placeholder="Why?"></textarea>
+    <div class="modal-actions">
+      <button class="cancel" id="gate-cancel">Not yet</button>
+      <button class="cancel" id="gate-override-btn" hidden>Override…</button>
+      <button class="confirm" id="gate-confirm">Confirm — on the record</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: gate override ceremony (P4-UI1, ratified 2026-07-18) -->
+<div id="override-backdrop"><div id="gate-override-mount"></div></div>
+
+<div id="toast"></div>
+
+<div id="roster-mount" hidden></div>
+<!-- WF:KERNEL:BEGIN -->
+<script>
+/*!
+ * worldforge-kernel.v1.1.js — WorldForge OS governed project kernel (UMD)
+ *
+ * Extracted from worldforge-os_4.html block 01 (KERNEL_ACCESS regions per
+ * work/blocks/manifest.json) and bound to the recovered public contract in
+ * fragment-inventory_v1.md:
+ *   - UMD: module.exports / root.WFKernel
+ *   - createKernel({ storage, pipeline, actor }) — storage required (throws),
+ *     pipeline required (>=2 stages)
+ *   - PREFIX from pipeline.storage.projectPrefix (default 'wfproj:'),
+ *     LEGACY from pipeline.storage.legacyKey (default 'worldforge-projects-v1')
+ *   - Gate semantics: gate-on-LEAVING-stage; passes logged as 'gate-pass',
+ *     overrides as 'gate-override'; step-back requires a recorded reason (Rule 7)
+ *
+ * EXTRACT-DIVERGENCE log (differences from the inline original, all deliberate):
+ *   ED-1 storage injection   — window.storage replaced by injected async adapter
+ *                              { get(k,shared), set(k,v,shared), delete(k,shared),
+ *                                list(prefix,shared) }; kernel throws without it.
+ *   ED-2 constant derivation — PREFIX/LEGACY/PROFILE keys derived from pipeline
+ *                              config instead of file-scope literals.
+ *   ED-3 gate semantics      — gates carried on pipeline.gates (index -> def);
+ *                              kernel refuses ungated advance past a gated stage
+ *                              unless caller passes {gatePassed:true}; soft
+ *                              override supported via {override:true, reason}
+ *                              logged as 'gate-override'.
+ *   ED-4 actor seam          — actor is a string or () => string; replaces the
+ *                              inline myName global. Free-text still allowed at
+ *                              kernel tier; export validation enforces roster-id
+ *                              or 'human' (MARKER ACT-1 unchanged, owned by ext).
+ *   ED-5 pipeline injection  — STAGES no longer a file-scope constant; stages
+ *                              come from pipeline.stages.
+ *   ED-6 versioning          — KERNEL_VERSION '1.1.0', PROJECT_SCHEMA_VERSION 2;
+ *                              projects persisted with schemaVersion stamp,
+ *                              legacy (unstamped) records upgraded on migrate.
+ *
+ * Single-persist discipline: every mutation is freshen -> mutate -> ONE
+ * storage.set. Decision records append-only, capped at 100 (frozen decision).
+ */
+(function (root, factory) {
+  "use strict";
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory();
+  } else {
+    root.WFKernel = factory();
+  }
+})(typeof self !== "undefined" ? self : globalThis, function () {
+  "use strict";
+
+  var KERNEL_VERSION = "1.1.1"; // 1.1.1: loud corrupt-entry skip on load (chaos immunity 2026-07-19)
+  var PROJECT_SCHEMA_VERSION = 2;
+
+  function createKernel(opts) {
+    opts = opts || {};
+    var storage = opts.storage;
+    var pipeline = opts.pipeline;
+    var actorOpt = opts.actor;
+
+    if (!storage || typeof storage.get !== "function" || typeof storage.set !== "function")
+      throw new Error("WFKernel: storage adapter is required (get/set/delete/list)");
+    if (!pipeline || !Array.isArray(pipeline.stages) || pipeline.stages.length < 2)
+      throw new Error("WFKernel: pipeline with >=2 stages is required");
+
+    var st = pipeline.storage || {};
+    var PREFIX = st.projectPrefix || "wfproj:";
+    var LEGACY = st.legacyKey || "worldforge-projects-v1";
+    var PROFILE_KEY = st.profileKey || "worldforge-profile-v1";
+    var STAGES = pipeline.stages;
+    var GATES = pipeline.gates || {};
+    var DECISION_CAP = 100;
+
+    var actor = typeof actorOpt === "function" ? actorOpt : function () { return actorOpt || "A Forger"; };
+
+    var projects = [];
+    var listeners = [];
+
+    function emit(evt) {
+      for (var i = 0; i < listeners.length; i++) {
+        try { listeners[i](evt); } catch (e) { /* listener errors never break the kernel */ }
+      }
+    }
+
+    function record(p, kind, label, note) {
+      if (!p.decisions) p.decisions = [];
+      p.decisions.push({ ts: Date.now(), by: actor(), kind: kind, label: label, note: note || "" });
+      if (p.decisions.length > DECISION_CAP) p.decisions = p.decisions.slice(-DECISION_CAP);
+    }
+
+    function stamp(p) {
+      p.schemaVersion = PROJECT_SCHEMA_VERSION;
+      p.lastTouchedBy = actor();
+      p.updatedAt = Date.now();
+      return p;
+    }
+
+    async function persist(p) {
+      var ok = await storage.set(PREFIX + p.id, JSON.stringify(p), true);
+      if (!ok) throw new Error("persist-failed");
+      return p;
+    }
+
+    /* ---- hydration + one-time legacy migration (frozen decision) ---- */
+    async function migrateLegacy() {
+      try {
+        var r = await storage.get(LEGACY, true);
+        if (r && r.value) {
+          var old = JSON.parse(r.value);
+          for (var i = 0; i < old.length; i++) {
+            var p = old[i];
+            if (!p.decisions) p.decisions = [];
+            p.schemaVersion = PROJECT_SCHEMA_VERSION; // ED-6 upgrade stamp
+            try { await storage.set(PREFIX + p.id, JSON.stringify(p), true); } catch (e) { /* per-project best effort */ }
+          }
+          if (old.length) emit({ type: "migrated", count: old.length });
+          return old;
+        }
+      } catch (e) { /* no legacy floor */ }
+      return [];
+    }
+
+    async function loadProjects() {
+      var loaded = [];
+      var corrupt = 0;
+      try {
+        var listing = await storage.list(PREFIX, true);
+        var keys = (listing && listing.keys) ? listing.keys : [];
+        if (keys.length) {
+          var results = await Promise.allSettled(keys.map(function (k) { return storage.get(k, true); }));
+          results.forEach(function (r, i) {
+            if (r.status === "fulfilled" && r.value && r.value.value) {
+              try { loaded.push(JSON.parse(r.value.value)); }
+              catch (e) {
+                // Chaos immunity 2026-07-19: a corrupt entry used to vanish
+                // silently — a project disappearing with no trace. Skip is
+                // still the right recovery (one bad row must not take the
+                // floor down), but it is LOUD now: console + event payload.
+                corrupt++;
+                if (typeof console !== "undefined") console.error("[wf-kernel] corrupt project entry skipped: " + keys[i], e);
+                emit({ type: "corrupt-entry", key: keys[i] });
+              }
+            }
+          });
+        } else {
+          loaded = await migrateLegacy();
+        }
+      } catch (e) {
+        try { loaded = await migrateLegacy(); } catch (e2) { loaded = []; }
+      }
+      projects = loaded;
+      emit({ type: "loaded", count: projects.length, corrupt: corrupt });
+      return projects.slice();
+    }
+
+    // Re-read right before mutating: stale local copies never clobber
+    // someone else's newer stage/notes/decisions.
+    async function freshen(id) {
+      try {
+        var r = await storage.get(PREFIX + id, true);
+        if (r && r.value) {
+          var fresh = JSON.parse(r.value);
+          var i = projects.findIndex(function (x) { return x.id === id; });
+          if (i >= 0) projects[i] = fresh; else projects.push(fresh);
+          return fresh;
+        }
+      } catch (e) { /* fall through to local copy */ }
+      return projects.find(function (x) { return x.id === id; });
+    }
+
+    /* ---- profile (actor persistence) ---- */
+    async function loadProfile() {
+      try {
+        var r = await storage.get(PROFILE_KEY, false);
+        if (r && r.value) return (JSON.parse(r.value).name || "");
+      } catch (e) { /* no profile yet */ }
+      return "";
+    }
+    async function saveProfile(name) {
+      try { await storage.set(PROFILE_KEY, JSON.stringify({ name: name }), false); } catch (e) { /* non-fatal */ }
+    }
+
+    /* ---- mutations (freshen -> mutate -> single persist) ---- */
+    async function createProject(fields) {
+      if (!fields || !fields.name) throw new Error("createProject: name required");
+      var by = actor();
+      var proj = stamp({
+        id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+        name: fields.name, type: fields.type || "film",
+        stage: 0, notes: "", decisions: [],
+        createdBy: by, createdAt: Date.now()
+      });
+      projects.push(proj);
+      await persist(proj);
+      emit({ type: "created", id: proj.id });
+      return proj;
+    }
+
+    function gateFor(stageIndex) { return GATES[stageIndex] || null; }
+
+    async function advance(id, gateResult) {
+      var p = await freshen(id);
+      if (!p) throw new Error("advance: unknown project " + id);
+      if (p.stage >= STAGES.length - 1) return { ok: false, reason: "complete", project: p };
+      var gate = gateFor(p.stage); // gate fires on LEAVING the stage (frozen semantics)
+      if (gate) {
+        if (!gateResult || (!gateResult.gatePassed && !gateResult.override))
+          return { ok: false, reason: "gate", gate: gate, project: p };
+        if (gateResult.override) {
+          if (!gateResult.reason) throw new Error("gate-override requires a recorded reason");
+          record(p, "gate-override", gate.title, gateResult.reason);
+        } else {
+          record(p, "gate-pass", gate.title, gateResult.reason || "");
+        }
+      }
+      p.stage += 1;
+      stamp(p);
+      await persist(p);
+      emit({ type: "advanced", id: id, stage: p.stage });
+      return { ok: true, project: p };
+    }
+
+    async function stepBack(id, reason) {
+      if (!reason || !String(reason).trim())
+        throw new Error("stepBack: a recorded reason is required (Rule 7)");
+      var p = await freshen(id);
+      if (!p) throw new Error("stepBack: unknown project " + id);
+      if (p.stage === 0) return { ok: false, reason: "at-start", project: p };
+      record(p, "step-back", 'Back to "' + STAGES[p.stage - 1] + '"', reason);
+      p.stage -= 1;
+      stamp(p);
+      await persist(p);
+      emit({ type: "stepped-back", id: id, stage: p.stage });
+      return { ok: true, project: p };
+    }
+
+    async function saveNotes(id, text) {
+      var p = await freshen(id);
+      if (!p) throw new Error("saveNotes: unknown project " + id);
+      p.notes = text;
+      stamp(p);
+      await persist(p);
+      emit({ type: "notes-saved", id: id });
+      return p;
+    }
+
+    async function deleteProject(id) {
+      projects = projects.filter(function (x) { return x.id !== id; });
+      try { await storage.delete(PREFIX + id, true); }
+      catch (e) { emit({ type: "delete-unsynced", id: id }); throw e; }
+      emit({ type: "deleted", id: id });
+    }
+
+    return {
+      version: KERNEL_VERSION,
+      schemaVersion: PROJECT_SCHEMA_VERSION,
+      stages: STAGES.slice(),
+      gateFor: gateFor,
+      loadProjects: loadProjects,
+      getProjects: function () { return projects.slice(); },
+      getProject: function (id) { return projects.find(function (x) { return x.id === id; }); },
+      freshen: freshen,
+      loadProfile: loadProfile,
+      saveProfile: saveProfile,
+      createProject: createProject,
+      advance: advance,
+      stepBack: stepBack,
+      saveNotes: saveNotes,
+      deleteProject: deleteProject,
+      subscribe: function (fn) {
+        listeners.push(fn);
+        return function () { var i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); };
+      }
+    };
+  }
+
+  return {
+    KERNEL_VERSION: KERNEL_VERSION,
+    PROJECT_SCHEMA_VERSION: PROJECT_SCHEMA_VERSION,
+    createKernel: createKernel
+  };
+});
+
+</script>
+<!-- WF:KERNEL:END -->
+<!-- WF:BUNDLE:BEGIN -->
+<script>
+/* WF-BUNDLE-HASH sha256:47d35478c0d34163d210337d416c3e62de82a71fe65df2f93cbfe20e7e43ae82 */
+"use strict";
+/* ===== module: vendor-loader.js ===== */
+/*!
+ * vendor-loader.js — WorldForge OS P4 (UMD)
+ * Loads Three.js r128 from CDN with timeout; on failure fires the same
+ * degradation path as WebGL-unavailable. One fallback, two triggers.
+ * WebGL probe is deliberately Three-free (bare canvas.getContext) so it
+ * works when the CDN never loaded.
+ */
+(function (root, factory) {
+  "use strict";
+  root.WF = root.WF || {};
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(root.WF);
+  } else {
+    root.WF.VendorLoader = factory(root.WF);
+  }
+})(typeof self !== "undefined" ? self : globalThis, function (WF) {
+  "use strict";
+
+  var THREE_CDN = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+  var TIMEOUT_MS = 8000;
+  var _threePromise = null;
+
+  function loadThree(opts) {
+    opts = opts || {};
+    var url = opts.url || THREE_CDN;
+    var timeout = opts.timeout || TIMEOUT_MS;
+    if (_threePromise) return _threePromise; // idempotent
+    if (typeof window !== "undefined" && window.THREE)
+      return (_threePromise = Promise.resolve(window.THREE));
+
+    _threePromise = new Promise(function (resolve) {
+      var s = document.createElement("script");
+      var settled = false;
+      var timer = setTimeout(function () { settle(null, "timeout"); }, timeout);
+      function settle(val, reason) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (!val) {
+          s.remove();
+          document.dispatchEvent(new CustomEvent("wf:vendor-fallback", {
+            detail: { vendor: "three", reason: reason }
+          }));
+        }
+        resolve(val);
+      }
+      s.src = url;
+      s.async = true; // never block rendering
+      s.onload = function () { settle(window.THREE || null, "loaded-but-missing-global"); };
+      s.onerror = function () { settle(null, "network"); };
+      document.head.appendChild(s);
+    });
+    return _threePromise;
+  }
+
+  function webglAvailable() {
+    try {
+      var c = document.createElement("canvas");
+      return !!(window.WebGLRenderingContext &&
+        (c.getContext("webgl") || c.getContext("experimental-webgl")));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  return { loadThree: loadThree, webglAvailable: webglAvailable };
+});
+
+
+/* ===== module: kernel-adapter.js ===== */
+/*!
+ * kernel-adapter.js — WorldForge OS P4 (UMD)
+ * The ONLY module allowed to touch window.WFKernel. Modularization is not
+ * "move code into files" — it is "reduce global access to exactly one seam."
+ * build.mjs --gate enforces this mechanically.
+ */
+(function (root, factory) {
+  "use strict";
+  root.WF = root.WF || {};
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(root.WF, null);
+  } else {
+    root.WF.KernelAdapter = factory(root.WF, root);
+  }
+})(typeof self !== "undefined" ? self : globalThis, function (WF, browserRoot) {
+  "use strict";
+
+  function create(config) {
+    var kernelNS = browserRoot ? browserRoot.WFKernel : (config && config.kernelNS);
+    if (!kernelNS || typeof kernelNS.createKernel !== "function")
+      throw new Error("WFKernel not loaded — check bootstrap order (kernel script must precede bundle)");
+
+    var kernel = kernelNS.createKernel({
+      storage: config.storage,
+      pipeline: config.pipeline,
+      actor: config.actor
+    });
+
+    return {
+      version: kernel.version,
+      stages: kernel.stages,
+      gateFor: function (i) { return kernel.gateFor(i); },
+      loadProjects: function () { return kernel.loadProjects(); },
+      getProjects: function () { return kernel.getProjects(); },
+      getProject: function (id) { return kernel.getProject(id); },
+      freshen: function (id) { return kernel.freshen(id); },
+      loadProfile: function () { return kernel.loadProfile(); },
+      saveProfile: function (n) { return kernel.saveProfile(n); },
+      createProject: function (f) { return kernel.createProject(f); },
+      advance: function (id, g) { return kernel.advance(id, g); },
+      stepBack: function (id, r) { return kernel.stepBack(id, r); },
+      saveNotes: function (id, t) { return kernel.saveNotes(id, t); },
+      deleteProject: function (id) { return kernel.deleteProject(id); },
+      subscribe: function (fn) { return kernel.subscribe(fn); },
+      // P2 extension installs on the raw kernel INSIDE the adapter seam;
+      // callers receive the extended instance for P2 component contracts
+      // (components take a kernel instance — no global access involved).
+      installP2: function (P2ExtNS, opts) {
+        P2ExtNS.install(kernel, opts);
+        return kernel;
+      },
+      bindProject: function (id) { if (kernel.bindProject) kernel.bindProject(id); }
+    };
+  }
+
+  return { create: create };
+});
+
+
+/* ===== module: wfkernel-p2-ext.v1.2.js ===== */
+/*!
+ * wfkernel-p2-ext.v1.2.js — WorldForge OS P2 kernel extension (SOURCE-BOUND)
+ *
+ * v1.2 CHANGE LOG — VERIFY(kernel-src) markers burned against the REAL
+ * worldforge-kernel.v1.1.js (extracted 2026-07-17). All six resolved:
+ *   R1 version: kernel instance exposes `version` ('1.1.0'); accept 1.x.
+ *   R2 accessors: kernel exposes NEITHER getPipeline nor getRoster —
+ *      injection fallback is the live path (as designed).
+ *   R3 key scheme: prefix + id verbatim CONFIRMED. Divergence FIXED:
+ *      kernel writes with shared=true; v1.1 fallback omitted the flag,
+ *      silently splitting personal/shared scopes. Now passes true.
+ *   R4 persist hook: kernel exposes no persist/saveProject/save/_persist;
+ *      adapter fallback is the live path (with R3 fix).
+ *   R5 mutators: kernel has NEITHER updateBudget NOR recordDecision.
+ *      v1.2 provides additive fallbacks (P2 ledger: state.decision_log,
+ *      distinct from the kernel's pipeline ledger state.decisions).
+ *   R6 decision log field: kernel pipeline ledger is `decisions`
+ *      ({ts:number, by, kind, label, note}); P2 records land in
+ *      `decision_log` (frozen asset-ledger shape). Dual-read stands.
+ *   +  Multi-project binding: kernel is multi-project (getProject(id));
+ *      ext adds bindProject(id) and derives getProjectState from it.
+ *   +  Budget entries: components' FROZEN shape uses `cost`; summary now
+ *      reads cost with legacy `amount` fallback.
+ *
+ * v1.2.1 CHANGE LOG (backlog-close splice, 2026-07-19)
+ * ----------------------------------------------------------------
+ *   UI1-K1 BURNED: recordGateOverride added as a thin alias over the
+ *     kernel's atomic advance({override:true, reason}) — see the marker
+ *     comment at the alias for the contract shift (resolve = advanced).
+ *   Step 4.4 seams BURNED: getLedger / getDecisions / getBudget additive
+ *     read aliases pinned to the real state fields (budget_ledger,
+ *     decisions + decision_log merged view, budget_start).
+ *
+ * v1.1 CHANGE LOG (reconciliation of the three "assumed" methods)
+ * ----------------------------------------------------------------
+ * Source files were NOT available in this session (uploads empty; search
+ * returns fragments only). Reconciliation therefore does NOT bind to
+ * private kernel internals — it REPLACES every assumption with an
+ * injected seam + capability-detection chain. This is strictly safer
+ * than the v1.0 assumptions and remains correct regardless of what
+ * worldforge-kernel.v1.js actually contains. Verify points are marked
+ * `// VERIFY(kernel-src):` — a 10-minute pass once the file is uploaded.
+ *
+ *   1. `kernel._persist(state)`   → REMOVED. Persistence now flows
+ *      through `_p2Persist()`: (a) kernel.persist / kernel.save /
+ *      kernel._persist if any exists, else (b) direct write via the
+ *      injected storage adapter under the pipeline-defined project
+ *      prefix (`wfproj:` default — documented kernel behavior).
+ *   2. `kernel.readAssetBytes(id)` → REMOVED. Fingerprint verification
+ *      now takes an injected `readAssetBytes(assetRecord)` function.
+ *      Absent that, verification returns tri-state 'unverifiable' —
+ *      never a false pass, never a false fail (Rule 4 discipline).
+ *   3. `kernel.getRoster()/getPipeline()` → REMOVED as requirements.
+ *      Canonical roster + pipeline JSON are injected at install (they
+ *      are canonical sources — principle 1 — so injection is the
+ *      *correct* seam, not a workaround). Kernel methods are used
+ *      opportunistically if present.
+ *
+ * Everything else carries over from v1.0 unchanged in contract:
+ * eventing, budget rollup + reservation (reserve: ledger prefix),
+ * asset ledger, rule evaluator (rules.v1.json DSL), transactional
+ * promoteAsset, UFDM export/validate/import.
+ *
+ * UMD. No build chain. Ships alongside worldforge-kernel.v1.js —
+ * the kernel file itself is never modified (mixin discipline).
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.WFKernelP2Ext = factory(); }
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var EXT_VERSION = '1.2.1';
+  var REQUIRED_KERNEL_MAJOR = 1; // RESOLVED(kernel-src): instance exposes `version`; accept 1.x
+
+  /* ================================================================
+   * install(kernel, opts)
+   *   kernel : a live WFKernel instance (createKernel result)
+   *   opts:
+   *     pipeline       REQUIRED  canonical pipeline.v1.json object
+   *     roster         REQUIRED  canonical agent-roster.v5.2.json object
+   *     rules          optional  parsed rules.v1.json (or loadRules later)
+   *     storage        optional  the SAME adapter given to createKernel;
+   *                              needed only if the kernel exposes no
+   *                              persist/save method (seam #1 fallback)
+   *     readAssetBytes optional  async (assetRecord) => ArrayBuffer|Uint8Array|string
+   *                              (seam #2; absent => 'unverifiable')
+   *     digest         optional  async (bytes) => hex string; defaults to
+   *                              SubtleCrypto SHA-256 when available
+   * ================================================================ */
+  function install(kernel, opts) {
+    if (!kernel) throw new Error('P2Ext: kernel instance required');
+    opts = opts || {};
+    if (!opts.pipeline || !Array.isArray(opts.pipeline.stages)) {
+      throw new Error('P2Ext: canonical pipeline definition required (inject pipeline.v1.json)');
+    }
+    if (!opts.roster || !Array.isArray(opts.roster.agents)) {
+      throw new Error('P2Ext: canonical roster required (inject agent-roster.v5.2.json)');
+    }
+    if (kernel.version && parseInt(kernel.version, 10) !== REQUIRED_KERNEL_MAJOR) {
+      throw new Error('P2Ext: kernel major version mismatch: ' + kernel.version);
+    }
+
+    /* ------- multi-project binding (RESOLVED: kernel is multi-project) ------- */
+    var boundProjectId = opts.projectId || null;
+    kernel.bindProject = function (id) { boundProjectId = id; };
+    kernel.getBoundProject = function () { return boundProjectId; };
+    if (typeof kernel.getProjectState !== 'function') {
+      kernel.getProjectState = opts.getProjectState || function () {
+        if (!boundProjectId) throw new Error('P2Ext: no project bound — call kernel.bindProject(id)');
+        var p = typeof kernel.getProject === 'function' ? kernel.getProject(boundProjectId) : null;
+        if (!p) throw new Error('P2Ext: bound project not found: ' + boundProjectId);
+        return p;
+      };
+    }
+
+    var listeners = [];
+    var rules = opts.rules || null;
+    var pipelineDef = opts.pipeline;
+    var rosterDef = opts.roster;
+    var injectedStorage = opts.storage || null;
+    var injectedReadBytes = opts.readAssetBytes || null;
+
+    /* ---------------- seam #3: canonical accessors ---------------- */
+    // Kernel methods win if they exist (opportunistic), canon injection
+    // is the guaranteed path.
+    kernel.getPipeline = kernel.getPipeline || function () { return pipelineDef; };
+    kernel.getRoster   = kernel.getRoster   || function () { return rosterDef; };
+    // RESOLVED(kernel-src): kernel v1.1 exposes neither method; injection
+    // fallback above is the live path. Shapes are the canonical JSON by construction.
+
+    /* ---------------- seam #1: persistence ---------------- */
+    function projectKey(state) {
+      var prefix = (pipelineDef.storage && pipelineDef.storage.projectPrefix) || 'wfproj:';
+      var id = state && (state.id || state.project_id);
+      if (!id) throw new Error('P2Ext: project state has no id; cannot derive storage key');
+      // RESOLVED(kernel-src): kernel persists under PREFIX + p.id verbatim. Confirmed.
+      return prefix + id;
+    }
+
+    async function _p2Persist(state) {
+      // (a) public/internal persist on the kernel, in preference order
+      var hook = kernel.persist || kernel.saveProject || kernel.save || kernel._persist;
+      if (typeof hook === 'function') return hook.call(kernel, state);
+      // (b) direct adapter write — same key scheme the kernel documents
+      if (!injectedStorage) {
+        throw new Error('P2Ext: no kernel persist method found and no storage adapter injected. ' +
+                        'Pass the createKernel storage adapter as opts.storage.');
+      }
+      // window.storage-style adapter: async set(key, stringValue)
+      // RESOLVED(kernel-src) FIX: kernel writes with shared=true; match it,
+      // or ext writes land in personal scope while the kernel reads shared.
+      return injectedStorage.set(projectKey(state), JSON.stringify(state), true);
+    }
+    kernel._p2Persist = _p2Persist;
+
+    /* ---------------- eventing (v1.2: unified channel) ---------------- */
+    // RESOLVED(kernel-src): kernel v1.1 HAS subscribe/emit. v1.1's
+    // `kernel.subscribe || fallback` left ext notify() invisible to kernel
+    // subscribers (two disjoint channels). v1.2 chains: one subscribe call
+    // registers for BOTH kernel-originated and ext-originated events.
+    var kernelSubscribe = typeof kernel.subscribe === 'function' ? kernel.subscribe.bind(kernel) : null;
+    kernel.subscribe = function (fn) {
+      listeners.push(fn);
+      var unK = kernelSubscribe ? kernelSubscribe(fn) : null;
+      return function unsubscribe() {
+        var i = listeners.indexOf(fn);
+        if (i >= 0) listeners.splice(i, 1);
+        if (unK) unK();
+      };
+    };
+    function notify(event) {
+      for (var i = 0; i < listeners.length; i++) {
+        try { listeners[i](event); } catch (e) { /* listener errors never break the kernel */ }
+      }
+    }
+    kernel._p2Notify = notify;
+
+    /* ---------------- mutation serializer (chaos immunity 2026-07-19) ----
+     * Two fuzz/browser-proven lost-state races:
+     *   1. kernel freshen() re-reads storage and REPLACES the in-memory
+     *      project object while an in-flight ext mutation holds the OLD
+     *      reference — whichever persists last silently wins.
+     *   2. loadProjects() wholesale-replaces the projects array while a
+     *      concurrent createProject() is mid-flight — the new project
+     *      vanishes from memory (first-use UI race, browser-proven).
+     * Every state-replacing op therefore joins ONE global in-process FIFO
+     * (the wrap loop sits at the END of install so it covers ext methods
+     * too). Cross-client concurrency (two browsers on the shared floor)
+     * stays governed by freshen(), unchanged. A failed op rejects to its
+     * caller but never wedges the queue. NOTE for maintainers: a queued
+     * method must never call another queued method — that deadlocks the
+     * tail. Un-queued callers (reserveBudget, recordGateOverride) may. */
+    var _mutTail = Promise.resolve();
+    function enqueue(fn) {
+      var run = _mutTail.then(fn, fn);
+      _mutTail = run.then(function () {}, function () {});
+      return run;
+    }
+
+    /* RESOLVED(kernel-src): kernel v1.1 exposes NEITHER updateBudget NOR
+     * recordDecision — additive fallbacks below. P2 governance records
+     * append to state.decision_log (frozen asset-ledger shape), kept
+     * distinct from the kernel's pipeline ledger state.decisions.
+     * recordDecision does NOT persist (callers persist once per mutation
+     * — single-persist discipline); updateBudget persists, as UI callers
+     * treat it as a complete mutation. */
+    kernel.recordDecision = kernel.recordDecision || function (rec) {
+      var s = kernel.getProjectState();
+      if (!s.decision_log) s.decision_log = [];
+      s.decision_log.push(rec);
+      return rec;
+    };
+    kernel.updateBudget = kernel.updateBudget || function (entry) {
+      var s = kernel.getProjectState();
+      if (!s.budget_ledger) s.budget_ledger = [];
+      s.budget_ledger.push(entry);
+      return _p2Persist(s).then(function () { return entry; });
+    };
+
+    // Wrap the mutators with notify. Wrapping is additive — originals untouched.
+    // Async mutators notify AFTER completion (the FIFO means the state a
+    // subscriber reads must already hold the mutation it was told about).
+    ['updateBudget', 'recordDecision'].forEach(function (m) {
+      if (typeof kernel[m] === 'function' && !kernel[m].__p2wrapped) {
+        var orig = kernel[m].bind(kernel);
+        kernel[m] = function () {
+          var args = Array.prototype.slice.call(arguments);
+          var r = orig.apply(null, args);
+          if (r && typeof r.then === 'function') {
+            return r.then(function (v) { notify({ type: m, args: args }); return v; });
+          }
+          notify({ type: m, args: args });
+          return r;
+        };
+        kernel[m].__p2wrapped = true;
+      }
+    });
+
+    /* ---------------- UI1-K1 (BURNED 2026-07-19): gate-override seam ----
+     * Kernel v1.1's decision-write for a gate override IS
+     * advance(id, {override:true, reason}) — the 'gate-override' record and
+     * the stage move are ONE mutation, ONE persist (kernel single-persist
+     * discipline, worldforge-kernel.v1.1.js advance()). This alias adapts
+     * the WFGateOverride component contract to that atomic truth: when the
+     * promise resolves, the stage has ALREADY advanced — onDone refreshes,
+     * never advances again. Rejects loudly when the current stage has no
+     * gate: an ungated advance must never masquerade as an override,
+     * because the kernel would record nothing. */
+    kernel.recordGateOverride = kernel.recordGateOverride || function (projectId, rec) {
+      if (!rec || !rec.reason) {
+        return Promise.reject(new Error('recordGateOverride: a recorded reason is required (Rule 7)'));
+      }
+      var p = typeof kernel.getProject === 'function' ? kernel.getProject(projectId) : null;
+      if (!p) return Promise.reject(new Error('recordGateOverride: unknown project ' + projectId));
+      if (typeof kernel.gateFor !== 'function' || !kernel.gateFor(p.stage)) {
+        return Promise.reject(new Error('recordGateOverride: no gate on the current stage — nothing to override'));
+      }
+      return Promise.resolve(kernel.advance(projectId, { override: true, reason: rec.reason }))
+        .then(function (res) {
+          if (!res || !res.ok) {
+            throw new Error('recordGateOverride: kernel refused the advance: ' + ((res && res.reason) || 'unknown'));
+          }
+          notify({ type: 'gateOverride', project_id: projectId, stage: res.project.stage });
+          return res;
+        });
+    };
+
+    /* ---------------- budget (v1.0, unchanged contract) ---------------- */
+    kernel.getBudgetSummary = function () {
+      var s = kernel.getProjectState();
+      var ledger = (s && s.budget_ledger) || [];
+      var start = (s && s.budget_start) || 0;
+      var spent = 0, reserved = 0, corrupt = 0;
+      for (var i = 0; i < ledger.length; i++) {
+        var e = ledger[i];
+        // Chaos immunity 2026-07-19 (fuzz-proven): a null/non-object row
+        // crashed the whole summary. Count it loudly instead of dying on it.
+        if (!e || typeof e !== 'object') { corrupt++; continue; }
+        // RESOLVED: components' frozen entry shape uses `cost`; legacy `amount` honored.
+        var amt = Number(e.cost != null ? e.cost : e.amount) || 0;
+        if (typeof e.action === 'string' && e.action.indexOf('reserve:') === 0) reserved += amt;
+        else spent += amt;
+      }
+      if (corrupt) console.error('[wf-ext] budget ledger holds ' + corrupt + ' corrupt row(s) — excluded from summary');
+      return {
+        start: start, spent: spent, reserved: reserved, corrupt: corrupt,
+        available: start - spent - reserved,
+        currency: (pipelineDef.budget && pipelineDef.budget.currency) || 'USD'
+      };
+    };
+
+    /* ------- P2 visual read seams (BURNED 2026-07-19, handoff Step 4.4) ----
+     * Real names against kernel v1.1 + this ext:
+     *   ledger    = state.budget_ledger   (frozen {stage_id, actor, action, cost, ts})
+     *   decisions = state.decisions       (kernel pipeline: {ts:number, by, kind, label, note})
+     *             + state.decision_log    (P2 governance: ISO ts, actor, kind, reason)
+     *   budget    = state.budget_start
+     * WFUFDMVisual probes getLedger/getDecisions/getBudget first; these
+     * additive read-only aliases are that first probe. getDecisions merges
+     * both ledgers (R6 separation holds in storage; the chain is a view)
+     * normalized to the component's {kind, reason, actor, ts} vocabulary. */
+    kernel.getLedger = kernel.getLedger || function () {
+      return (kernel.getProjectState().budget_ledger || []).slice();
+    };
+    kernel.getDecisions = kernel.getDecisions || function () {
+      var s = kernel.getProjectState();
+      var out = [];
+      (s.decisions || []).forEach(function (d) {
+        out.push({ kind: d.kind, reason: d.note || d.label || '', actor: d.by, ts: d.ts });
+      });
+      (s.decision_log || []).forEach(function (d) { out.push(d); });
+      out.sort(function (a, b) {
+        var ta = typeof a.ts === 'number' ? a.ts : (Date.parse(a.ts) || 0);
+        var tb = typeof b.ts === 'number' ? b.ts : (Date.parse(b.ts) || 0);
+        return ta - tb;
+      });
+      return out;
+    };
+    kernel.getBudget = kernel.getBudget || function () {
+      return { budget_start: Number(kernel.getProjectState().budget_start) || 0 };
+    };
+
+    kernel.reserveBudget = function (amount, label) {
+      var sum = kernel.getBudgetSummary();
+      if (amount > sum.available) {
+        return { ok: false, reason: 'insufficient available budget', summary: sum };
+      }
+      // Frozen ledger shape holds — reservation is just an entry with a
+      // reserve: action prefix (design decision carried from v1.0).
+      // Chaos immunity 2026-07-19 (fuzz-proven): this wrote `amount`, the
+      // exact bug class the frozen shape forbids — the visual tier sums
+      // only `cost`, so reservations were invisible. `cost` is the field.
+      kernel.updateBudget({ action: 'reserve:' + (label || 'unlabeled'), cost: amount, ts: Date.now() });
+      return { ok: true, summary: kernel.getBudgetSummary() };
+    };
+
+    /* ---------------- asset ledger (v1.0, persistence rerouted) -------- */
+    function assets(s) { s.assets = s.assets || []; return s.assets; }
+
+    kernel.getAssets = function () {
+      return assets(kernel.getProjectState()).slice();
+    };
+
+    kernel.registerAsset = async function (record) {
+      var required = ['id', 'type', 'name']; // aligns with asset-library-schema v3.1 minimums
+      // VERIFY(schema): confirm required list against asset-library-schema.v3.1.json
+      for (var i = 0; i < required.length; i++) {
+        if (record[required[i]] == null) {
+          return { ok: false, reason: 'missing required field: ' + required[i] };
+        }
+      }
+      var s = kernel.getProjectState();
+      if (assets(s).some(function (a) { return a.id === record.id; })) {
+        return { ok: false, reason: 'duplicate asset id: ' + record.id };
+      }
+      record.locked = false;
+      record.registered_at = new Date().toISOString();
+      assets(s).push(record);
+      await _p2Persist(s);
+      notify({ type: 'registerAsset', asset: record });
+      return { ok: true, asset: record };
+    };
+
+    async function setLock(id, locked, reason) {
+      var s = kernel.getProjectState();
+      var a = assets(s).find(function (x) { return x.id === id; });
+      if (!a) return { ok: false, reason: 'unknown asset: ' + id };
+      if (locked && a.locked) return { ok: false, reason: 'already locked' };
+      if (!locked && !a.locked) return { ok: false, reason: 'not locked' };
+      if (!locked && !reason) return { ok: false, reason: 'unlock requires a reason (Rule 7)' };
+      a.locked = locked;
+      a[locked ? 'locked_at' : 'unlocked_at'] = new Date().toISOString();
+      if (!locked) {
+        kernel.recordDecision({
+          kind: 'asset-unlock', asset_id: id, reason: reason,
+          impact: 'low', ts: new Date().toISOString()
+        });
+        // RESOLVED(kernel-src): lands in decision_log via fallback; frozen shape as given.
+      }
+      await _p2Persist(s);
+      notify({ type: locked ? 'lockAsset' : 'unlockAsset', asset: a });
+      return { ok: true, asset: a };
+    }
+    kernel.lockAsset = function (id) { return setLock(id, true); };
+    kernel.unlockAsset = function (id, reason) { return setLock(id, false, reason); };
+
+    /* ------ seam #2: fingerprint verification (tri-state) ------ */
+    async function defaultDigest(bytes) {
+      if (typeof crypto !== 'undefined' && crypto.subtle) {
+        var buf = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
+        var h = await crypto.subtle.digest('SHA-256', buf);
+        return Array.from(new Uint8Array(h))
+          .map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+      }
+      return null; // Node path: inject opts.digest using require('crypto')
+    }
+    var digest = opts.digest || defaultDigest;
+
+    kernel.verifyAssetFingerprint = async function (id) {
+      var a = kernel.getAssets().find(function (x) { return x.id === id; });
+      if (!a) return { status: 'error', reason: 'unknown asset: ' + id };
+      if (!a.fingerprint) return { status: 'unverifiable', reason: 'no recorded fingerprint' };
+      if (!injectedReadBytes) {
+        return { status: 'unverifiable',
+                 reason: 'no readAssetBytes injected — asset-byte storage location is decision P2-D-bytes (open)' };
+      }
+      try {
+        var bytes = await injectedReadBytes(a);
+        if (bytes == null) return { status: 'unverifiable', reason: 'bytes unavailable for ' + id };
+        var hex = await digest(bytes);
+        if (hex == null) return { status: 'unverifiable', reason: 'no digest implementation in this runtime' };
+        return hex === a.fingerprint
+          ? { status: 'verified', fingerprint: hex }
+          : { status: 'mismatch', expected: a.fingerprint, actual: hex };
+      } catch (e) {
+        return { status: 'error', reason: String(e && e.message || e) };
+      }
+    };
+
+    /* ---------------- rule evaluator (rules.v1.json DSL) --------------- */
+    kernel.loadRules = function (doc) {
+      if (!doc || !Array.isArray(doc.rules)) throw new Error('P2Ext: invalid rules.v1.json');
+      rules = doc;
+      notify({ type: 'loadRules', version: doc.rules_version, source: doc.source });
+      return { ok: true, count: doc.rules.length, source: doc.source };
+    };
+
+    var PREDICATES = {
+      missing_field: function (ctx, p) {
+        var v = p.path.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, ctx);
+        return v == null || v === '';
+      },
+      impact_gte: function (ctx, p) {
+        var order = { low: 0, medium: 1, high: 2, critical: 3 };
+        return (order[ctx.promotion && ctx.promotion.impact] || 0) >= (order[p.threshold] || 0);
+      },
+      asset_unlocked_promotion: function (ctx) {
+        return !!(ctx.asset && ctx.asset.locked === false && ctx.promotion);
+      }
+      // extensible: gen_rules.py may emit new predicate ids; unknown ids
+      // evaluate to a finding of severity 'error' (fail-closed, below).
+    };
+
+    kernel.evaluateRules = function (ctx) {
+      if (!rules) return { ok: false, findings: [{ rule: 'RULES-MISSING', severity: 'error',
+        message: 'rules.v1.json not loaded — promotion blocked (fail-closed)' }] };
+      var findings = [];
+      for (var i = 0; i < rules.rules.length; i++) {
+        var r = rules.rules[i];
+        var fn = PREDICATES[r.predicate];
+        if (!fn) {
+          findings.push({ rule: r.id, severity: 'error',
+            message: 'unknown predicate "' + r.predicate + '" — regenerate ext or rules' });
+          continue;
+        }
+        var fired;
+        try { fired = fn(ctx, r.params || {}); }
+        catch (e) { findings.push({ rule: r.id, severity: 'error', message: String(e) }); continue; }
+        if (fired) findings.push({ rule: r.id, severity: r.severity || 'error', message: r.message });
+      }
+      if (rules.source === 'bootstrap') {
+        findings.push({ rule: 'RULES-PROVENANCE', severity: 'warn',
+          message: 'rules.v1.json compiled from bootstrap table, not lint_worldforge.py — advisory only' });
+      }
+      return { ok: !findings.some(function (f) { return f.severity === 'error'; }), findings: findings };
+    };
+
+    /* ---------------- promoteAsset (transactional) ---------------- */
+    kernel.promoteAsset = async function (req) {
+      // req: { asset_id, actor, reason, impact, approver? }
+      var t0 = Date.now();
+      var s = kernel.getProjectState();
+      var a = assets(s).find(function (x) { return x.id === req.asset_id; });
+      if (!a) return { ok: false, stage: 'lookup', reason: 'unknown asset: ' + req.asset_id };
+
+      // 1. schema check (Rule 12 structural requirement)
+      if (!req.reason) return { ok: false, stage: 'schema', reason: 'decision reason required (Rule 12: no silent promotion)' };
+      if (!req.actor)  return { ok: false, stage: 'schema', reason: 'actor required' };
+
+      // 2. commit-time rule re-run (never trust a stale UI evaluation)
+      var evalResult = kernel.evaluateRules({ asset: a, promotion: req, project: s });
+      if (!evalResult.ok) return { ok: false, stage: 'rules', findings: evalResult.findings };
+
+      // 3. GOV-2 gate: high-impact promotions need a second approver
+      var needsGov2 = evalResult.findings.some(function (f) { return f.rule === 'GOV-2'; });
+      if (needsGov2 && !req.approver) {
+        return { ok: false, stage: 'gov2', reason: 'impact threshold met — approver required', findings: evalResult.findings };
+      }
+
+      // 4. decision record (Rule 7) — before mutation, atomic with it
+      kernel.recordDecision({
+        kind: 'promotion', asset_id: a.id, actor: req.actor,
+        approver: req.approver || null, reason: req.reason,
+        impact: req.impact || 'low', findings: evalResult.findings,
+        ts: new Date().toISOString()
+      });
+
+      // 5. promotion log + lock, single persist (atomic)
+      s.promotion_log = s.promotion_log || [];
+      s.promotion_log.push({ asset_id: a.id, actor: req.actor, ts: new Date().toISOString() });
+      a.locked = true;
+      a.locked_at = new Date().toISOString();
+      a.promoted = true;
+      await _p2Persist(s);
+
+      notify({ type: 'promoteAsset', asset: a });
+      return { ok: true, asset: a, elapsed_ms: Date.now() - t0 }; // design law: clean path < 10s
+    };
+
+    /* ---------------- UFDM export / validate / import ------------------ */
+    kernel.exportUFDM = function () {
+      var s = kernel.getProjectState();
+      return {
+        ufdm_version: '1.0.0',
+        exported_at: new Date().toISOString(),
+        kernel_version: kernel.version || '1.x',
+        ext_version: EXT_VERSION,
+        project: s,
+        stages: pipelineDef.stages,
+        agents: rosterDef.agents,
+        assets: (s.assets || []),
+        decision_log: (s.decisions || s.decision_log || []),
+        // RESOLVED(kernel-src): kernel pipeline ledger is `decisions`; P2 ledger is `decision_log`. Dual-read correct.
+        budget: kernel.getBudgetSummary()
+      };
+    };
+
+    kernel.validateUFDM = function (doc) {
+      var problems = []; // validate-all-report-all (v1.0 contract)
+      if (!doc || typeof doc !== 'object') return { ok: false, problems: ['not an object'] };
+      if (doc.ufdm_version !== '1.0.0') problems.push('unsupported ufdm_version: ' + doc.ufdm_version);
+      if (!doc.project || !doc.project.id) problems.push('project.id missing');
+      if (!Array.isArray(doc.stages) || doc.stages.length < 2) problems.push('stages invalid (<2)');
+      var canonStages = pipelineDef.stages.map(function (st) { return st.id; }).join(',');
+      var docStages = (doc.stages || []).map(function (st) { return st.id; }).join(',');
+      if (canonStages !== docStages) problems.push('stage sequence differs from canonical pipeline');
+      var agentIds = {};
+      rosterDef.agents.forEach(function (ag) { agentIds[ag.id || ag.name] = true; });
+      (doc.decision_log || []).forEach(function (d, i) {
+        if (d.actor && !agentIds[d.actor] && d.actor !== 'human') {
+          problems.push('decision_log[' + i + '].actor not in canonical roster: ' + d.actor);
+        }
+      });
+      (doc.assets || []).forEach(function (a, i) {
+        if (!a.id) problems.push('assets[' + i + '].id missing');
+      });
+      return { ok: problems.length === 0, problems: problems };
+    };
+
+    kernel.importUFDM = async function (doc) {
+      var v = kernel.validateUFDM(doc);
+      if (!v.ok) return { ok: false, problems: v.problems };
+      // atomic single-persist reconstruct (v1.0 contract)
+      await _p2Persist(doc.project);
+      notify({ type: 'importUFDM', project_id: doc.project.id });
+      return { ok: true, project_id: doc.project.id };
+    };
+
+    /* ---- serializer wrap (chaos immunity 2026-07-19, see enqueue above) --
+     * Applied LAST so it covers kernel mutators AND every ext method that
+     * persists or replaces in-memory state. Anything in this list must not
+     * call anything else in this list (deadlock — see the enqueue note). */
+    ['loadProjects', 'createProject', 'advance', 'stepBack', 'saveNotes',
+     'deleteProject', 'updateBudget', 'registerAsset', 'lockAsset',
+     'unlockAsset', 'promoteAsset', 'importUFDM'].forEach(function (m) {
+      if (typeof kernel[m] === 'function' && !kernel[m].__p2queued) {
+        var orig = kernel[m].bind(kernel);
+        kernel[m] = function () {
+          var args = arguments;
+          return enqueue(function () { return orig.apply(null, args); });
+        };
+        kernel[m].__p2queued = true;
+      }
+    });
+
+    return kernel;
+  }
+
+  return { install: install, EXT_VERSION: EXT_VERSION };
+}));
+
+
+/* ===== module: wf-ufdm-components.v1.js ===== */
+/*!
+ * wf-ufdm-components.v1.js — WorldForge OS P2: Real UFDM Surface
+ * Framework-agnostic UI components for WFKernel v1.x
+ *
+ * Contract (all components):
+ *   const c = new Component(kernel, { mount: HTMLElement, ...opts });
+ *   c.mount();     // renders + subscribes to kernel
+ *   c.update();    // re-reads kernel state, re-renders
+ *   c.destroy();   // unsubscribes, clears DOM
+ *
+ * Domain state lives in the kernel. Components hold VIEW state only
+ * (filters, open modals, sort order). Every mutation goes through a
+ * kernel dispatch; components never write project state directly.
+ *
+ * Kernel dependencies are listed per component; see the P2 spec doc
+ * for which are live vs. new (wfkernel-p2-ext).
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.WFUFDM = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  /* ------------------------------------------------------------------ */
+  /* Shared: category derivation for budget line items.                  */
+  /* Ledger entry shape is FROZEN: {stage_id, actor, action, cost, ts}.  */
+  /* Category is DERIVED, never stored. Mapping should be regenerated    */
+  /* from canonical config (gen_rules.py pattern), not hand-edited.      */
+  /* ------------------------------------------------------------------ */
+  const LINE_CATEGORIES = {
+    vision:   { label: "Vision & Stills",     match: /^(image|still|anchor|vision|concept)/i },
+    video:    { label: "Video Generation",    match: /^(video|clip|gen_video|animate)/i },
+    motion:   { label: "Motion & Graphics",   match: /^(motion|graphics|comp|edit|assembly)/i },
+    other:    { label: "Other",               match: /.*/ },
+  };
+  function categorize(entry) {
+    for (const [key, def] of Object.entries(LINE_CATEGORIES)) {
+      if (def.match.test(entry.action || "")) return key;
+    }
+    return "other";
+  }
+
+  class WFComponent {
+    constructor(kernel, opts = {}) {
+      this.kernel = kernel;
+      this.el = opts.mount;
+      this._unsub = null;
+    }
+    mount() {
+      // kernel.subscribe(fn) -> unsubscribe fn   [NEW: wfkernel-p2-ext]
+      if (typeof this.kernel.subscribe === "function") {
+        this._unsub = this.kernel.subscribe(() => this.update());
+      }
+      this.update();
+      return this;
+    }
+    update() { /* implemented by subclass */ }
+    destroy() {
+      if (this._unsub) this._unsub();
+      if (this.el) this.el.innerHTML = "";
+    }
+  }
+
+  /* ==================================================================
+   * 1. BudgetLedger
+   * Reads:   kernel.getBudgetSummary(), kernel.getProjectState()
+   * Writes:  kernel.updateBudget(entry), kernel.reserveBudget(entry)
+   * Emits:   'wf:budget-warning' (>=80%), 'wf:budget-gate' (>=100%)
+   * ================================================================== */
+  class BudgetLedger extends WFComponent {
+    constructor(kernel, opts = {}) {
+      super(kernel, opts);
+      this.view = {
+        categories: new Set(Object.keys(LINE_CATEGORIES)), // toggles
+        drillAgent: null,                                   // agent drill-down
+      };
+    }
+
+    /** Derived rollup. If kernel.getBudgetSummary exists, prefer it. */
+    summary() {
+      if (typeof this.kernel.getBudgetSummary === "function") {
+        return this.kernel.getBudgetSummary();
+      }
+      // Fallback: derive from raw ledger (frozen shape).
+      const st = this.kernel.getProjectState();
+      const ledger = st.budget_ledger || [];
+      const start = st.budget_start || 0;
+      const byStage = {}, byAgent = {}, byCategory = {};
+      let spent = 0;
+      for (const e of ledger) {
+        const cat = categorize(e);
+        if (!this.view.categories.has(cat)) continue;
+        spent += e.cost;
+        byStage[e.stage_id] = (byStage[e.stage_id] || 0) + e.cost;
+        byAgent[e.actor] = (byAgent[e.actor] || 0) + e.cost;
+        byCategory[cat] = (byCategory[cat] || 0) + e.cost;
+      }
+      const utilization = start ? spent / start : 0;
+      return { start, spent, remaining: start - spent, utilization,
+               byStage, byAgent, byCategory,
+               burn: this._burnProjection(ledger, start, spent) };
+    }
+
+    /** Linear projection: current burn rate continued to timeline end. */
+    _burnProjection(ledger, start, spent) {
+      if (ledger.length < 2) return null;
+      const ts = ledger.map(e => +new Date(e.timestamp)).sort((a, b) => a - b);
+      const elapsed = ts[ts.length - 1] - ts[0];
+      if (elapsed <= 0) return null;
+      const ratePerDay = spent / (elapsed / 86400000);
+      const daysToGate = ratePerDay > 0 ? (start - spent) / ratePerDay : Infinity;
+      return { ratePerDay, daysToGate };
+    }
+
+    /** Hard gate: rejects any entry that would exceed 100%. */
+    addSpend(entry) {
+      const s = this.summary();
+      if (s.spent + entry.cost > s.start) {
+        this._emit("wf:budget-gate", { entry, summary: s });
+        return { ok: false, reason: "BUDGET_GATE_100" };
+      }
+      this.kernel.updateBudget(entry); // live in v1.0.0
+      const after = this.summary();
+      if (after.utilization >= 0.8) this._emit("wf:budget-warning", after);
+      return { ok: true };
+    }
+
+    toggleCategory(key) {
+      this.view.categories.has(key)
+        ? this.view.categories.delete(key)
+        : this.view.categories.add(key);
+      this.update();
+    }
+
+    _emit(name, detail) {
+      if (this.el) this.el.dispatchEvent(new CustomEvent(name, { detail, bubbles: true }));
+    }
+
+    update() {
+      if (!this.el) return;
+      // Rendering left to host surface / mockup. Subclass or template here.
+      this.el.dataset.utilization = String(this.summary().utilization);
+    }
+  }
+
+  /* ==================================================================
+   * 2. LockedAssets
+   * Reads:   kernel.getAssets(), kernel.verifyAssetFingerprint(id)
+   * Writes:  kernel.lockAsset(id, actor), kernel.unlockAsset(id, actor)
+   * Emits:   'wf:asset-corrupted' (fingerprint mismatch)
+   * Asset shape (frozen): {asset_id, stage_created, type,
+   *                        fingerprint, locked, promotion_log[]}
+   * ================================================================== */
+  class LockedAssets extends WFComponent {
+    constructor(kernel, opts = {}) {
+      super(kernel, opts);
+      this.view = { typeFilter: null, expanded: new Set() };
+    }
+
+    assets() {
+      const all = this.kernel.getAssets(); // NEW: wfkernel-p2-ext
+      return this.view.typeFilter
+        ? all.filter(a => a.type === this.view.typeFilter)
+        : all;
+    }
+
+    /** Locked assets are immutable; only unlocked assets may change. */
+    setLocked(assetId, locked, actor) {
+      const a = this.kernel.getAssets().find(x => x.asset_id === assetId);
+      if (!a) return { ok: false, reason: "NOT_FOUND" };
+      if (a.locked === locked) return { ok: true, noop: true };
+      return locked
+        ? this.kernel.lockAsset(assetId, actor)
+        : this.kernel.unlockAsset(assetId, actor);
+    }
+
+    /** Recompute SHA256 of stored bytes and compare to record. */
+    async verify(assetId) {
+      const res = await this.kernel.verifyAssetFingerprint(assetId); // NEW
+      if (!res.match) {
+        this.el?.dispatchEvent(new CustomEvent("wf:asset-corrupted", {
+          detail: { assetId, expected: res.expected, actual: res.actual },
+          bubbles: true,
+        }));
+      }
+      return res;
+    }
+
+    update() {
+      if (!this.el) return;
+      this.el.dataset.assetCount = String(this.assets().length);
+    }
+  }
+
+  /* ==================================================================
+   * 3. PromotionWorkflow
+   * P2 rule: promotion REQUIRES a decision record that validates
+   * against the governance schema. No record, no promotion.
+   *
+   * Reads:   kernel.getAssets(), kernel.evaluateRules(ctx)  [JS rule
+   *          evaluator compiled from lint_worldforge.py via gen_rules.py]
+   * Writes:  kernel.promoteAsset(assetId, decisionDraft)    [transactional]
+   * Emits:   'wf:promotion-complete', 'wf:promotion-blocked'
+   * ================================================================== */
+  class PromotionWorkflow extends WFComponent {
+    constructor(kernel, opts = {}) {
+      super(kernel, opts);
+      this.view = { open: false, assetId: null, draft: null, lintResult: null };
+    }
+
+    /** Step 1: open modal with a pre-filled draft (fast path <10s). */
+    begin(assetId, sessionActor) {
+      this.view.open = true;
+      this.view.assetId = assetId;
+      this.view.draft = {
+        reason: "",
+        promoted_by: sessionActor || "",   // pre-filled from session
+        impact: "medium",                  // defaulted
+        rule_override: null,               // only if linter flags
+      };
+      this.update();
+    }
+
+    /** Step 2: run the rule evaluator BEFORE submit so the user sees
+     *  the GOV-2 requirement up front, not as a rejection. */
+    lint() {
+      this.view.lintResult = this.kernel.evaluateRules({
+        kind: "asset_promotion",
+        asset_id: this.view.assetId,
+        draft: this.view.draft,
+      }); // -> { violations: [{rule_id, severity, message}], clean: bool }
+      this.update();
+      return this.view.lintResult;
+    }
+
+    /** Step 3: transactional promote. The kernel must do ALL of this
+     *  atomically — validate draft against governance schema, re-run
+     *  rules, require GOV-2 sign-off on violations, write the decision
+     *  record to the events ledger, append to the asset's
+     *  promotion_log, timestamp it. Promotion is immutable. */
+    async submit(gov2Signoff /* {actor, timestamp} | null */) {
+      const res = await this.kernel.promoteAsset(this.view.assetId, {
+        draft: this.view.draft,
+        gov2: gov2Signoff,
+      });
+      const evt = res.ok ? "wf:promotion-complete" : "wf:promotion-blocked";
+      this.el?.dispatchEvent(new CustomEvent(evt, { detail: res, bubbles: true }));
+      if (res.ok) { this.view.open = false; this.view.draft = null; }
+      this.update();
+      return res;
+    }
+
+    update() {
+      if (!this.el) return;
+      this.el.dataset.modalOpen = String(this.view.open);
+    }
+  }
+
+  /* ==================================================================
+   * 4a. UFDMExport
+   * kernel.exportUFDM() -> full project state: stages, assets, agents,
+   * decision log, budget. Serializable, transferable.
+   * ================================================================== */
+  class UFDMExport extends WFComponent {
+    exportJSON() {
+      const doc = this.kernel.exportUFDM(); // NEW: wfkernel-p2-ext
+      return JSON.stringify(doc, null, 2);
+    }
+    download(filename) {
+      const blob = new Blob([this.exportJSON()], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement("a"),
+        { href: url, download: filename || "project.ufdm.v1.json" });
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  /* ==================================================================
+   * 4b. UFDMImport
+   * Validation order matters — fail fast, report ALL findings:
+   *   1. envelope + version check (ufdm_version)
+   *   2. every referenced agent exists in canonical roster
+   *   3. every stage_id exists in pipeline.v1.json
+   *   4. no orphaned decision records (every record's actor + every
+   *      asset promotion_log entry resolves)
+   *   5. asset fingerprints are well-formed SHA256
+   * Only after a clean validation: kernel.importUFDM(doc) reconstructs
+   * state. Import NEVER partially applies.
+   * ================================================================== */
+  class UFDMImport extends WFComponent {
+    async validate(doc) {
+      return this.kernel.validateUFDM(doc); // NEW -> {valid, findings[]}
+    }
+    async importDoc(doc) {
+      const v = await this.validate(doc);
+      if (!v.valid) return { ok: false, findings: v.findings };
+      return this.kernel.importUFDM(doc);   // NEW: atomic reconstruct
+    }
+  }
+
+  return { BudgetLedger, LockedAssets, PromotionWorkflow,
+           UFDMExport, UFDMImport, LINE_CATEGORIES, categorize };
+});
+
+
+/* ===== module: guilds-data.js ===== */
+/*!
+ * guilds-data.js — WorldForge OS P4 (UMD)
+ * GENERATED DATA carried verbatim from monolith block 01 lines 1-72.
+ * GUILDS is generated from agent-roster.v5.2.json by gen_guilds.py —
+ * do not edit by hand; edit the canonical roster and regenerate.
+ * lint_worldforge.py enforces consistency.
+ */
+(function (root, factory) {
+  "use strict";
+  root.WF = root.WF || {};
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(root.WF);
+  } else {
+    root.WF.Data = factory(root.WF);
+  }
+})(typeof self !== "undefined" ? self : globalThis, function (WF) {
+  "use strict";
+const GUILDS = [
+  { key:'core', name:'Core Production', color:0xc1652b, radius:5.0, tilt:0.05, agents:[
+    {name:'Creative Director', resp:'Narrow tie-breaker across all Guilds; final call only when two leads genuinely conflict.', auth:'Final say on conflicts only — does not pre-empt domain leads.', esc:'None (top of the chain).', mem:'decisionRecords'},
+    {name:'Screenwriter / Story Lead', resp:'Stages 1–2: Film Bible, beats, causality, want/need, arcs.', auth:'Owns story/theme.', esc:'Creative Director on theme conflicts.', mem:'Project Memory'},
+    {name:'Cinematographer', resp:'Stage 3: camera, lens, lighting, color, blocking, depth; asset-fingerprint sign-off on visual canon.', auth:'Owns visual language.', esc:'Creative Director on doctrine conflicts.', mem:'Asset fingerprint records'},
+    {name:'Producer', resp:'Stage 4 + Budget Guild oversight; feasibility sanity-check at Stage 1.', auth:'Owns scope/budget gating.', esc:'Creative Director on scope-vs-ambition conflicts.', mem:'Budget ledger, validationLedger'},
+    {name:'Model Router', resp:'Stage 5: picks model per shot, runs test generations, watches deprecation.', auth:'Owns model selection.', esc:'Cinematographer if routing compromises visual doctrine.', mem:'model-router.md, decision records'},
+    {name:'QA / Continuity Supervisor', resp:'Stage 8: validation, targeted repair, fingerprint diffing against canon.', auth:'Owns validation gate.', esc:'Producer if a failure is Film-Bible-level.', mem:'validationLedger'},
+  ]},
+  { key:'crosscut', name:'Cross-Cutting Guilds', color:0xc1652b, radius:6.2, tilt:0.6, agents:[
+    {name:'Budget Guild Lead', resp:'Running cost ledger, per-shot estimation, reconciling estimate vs. actual.', auth:'Owns the number behind Rule 3\'s gate.', esc:'Producer on go/no-go.', mem:'Budget ledger in validationLedger'},
+    {name:'Asset Librarian', resp:'Studio-level memory: promotion/demotion between Project Memory and the Asset Library.', auth:'Owns promotion criteria, not the promotion decision itself.', esc:'Creative Director on any promotion (never silent, per Rule 12).', mem:'assets/asset-library-schema.json'},
+    {name:'Brand Guardian', resp:'Cross-Guild consistency watchdog against locked brand doctrine, regardless of producing Guild.', auth:'Can block release, cannot override doctrine itself.', esc:'Brand & Identity Guild Lead on doctrine ambiguity.', mem:'Asset Library doctrine object'},
+  ]},
+  { key:'creative-plus', name:'Creative+ Guilds', color:0xf2c879, radius:7.4, tilt:1.15, agents:[
+    {name:'Film Director', resp:'Scene-level directing beneath macro story — blocking intent, performance beats within a scene.', auth:'Owns in-scene interpretation.', esc:'Screenwriter on story-level conflicts.', mem:'Project Memory'},
+    {name:'Storyboard Artist', resp:'Cheap-draft visual sequencing before Stage 4.5 simulation.', auth:'Owns draft sequencing.', esc:'Cinematographer on visual-doctrine conflicts.', mem:'Project Memory'},
+    {name:'Environment Designer', resp:'Locks environment appearance once, early.', auth:'Owns environment canon.', esc:'Cinematographer.', mem:'Asset fingerprint records'},
+    {name:'Character Designer', resp:'Locks character appearance once, early.', auth:'Owns character canon.', esc:'Cinematographer / Screenwriter.', mem:'Asset fingerprint records'},
+    {name:'Graphic Designer', resp:'Print, packaging, static visual deliverables.', auth:'Owns execution within locked doctrine.', esc:'Brand & Identity Guild Lead on doctrine questions.', mem:'Asset Library'},
+    {name:'Motion Designer', resp:'Titles, lower-thirds, kinetic type, transitions.', auth:'Owns motion execution.', esc:'Cinematographer on visual-doctrine fit.', mem:'Project Memory'},
+    {name:'Thumbnail Intelligence Agent', resp:'Designs and tests thumbnail/cover options against genre and platform conventions.', auth:'Owns thumbnail proposals.', esc:'Marketing Director on platform strategy conflicts.', mem:'Project Memory'},
+    {name:'Music Composer', resp:'Score/music direction consistent with Film Bible tone.', auth:'Owns musical doctrine.', esc:'Creative Director on tone conflicts.', mem:'Project Memory'},
+    {name:'Sound Designer', resp:'Diegetic/ambient sound design, distinct from dialogue.', auth:'Owns sound palette.', esc:'Cinematographer on scene-fit.', mem:'Project Memory'},
+    {name:'Voice Director', resp:'Dialogue/VO direction, casting-equivalent decisions for AI voice.', auth:'Owns voice casting.', esc:'Screenwriter on character-voice fit.', mem:'Project Memory'},
+    {name:'Game Design Lead', resp:'Mechanics, systems, playable-sim design when the project is a game.', auth:'Owns game systems design.', esc:'Creative Director on narrative-vs-mechanics conflicts.', mem:'Project Memory (game variant)'},
+  ]},
+  { key:'marketing', name:'Marketing & Growth', color:0xf2c879, radius:8.4, tilt:-0.7, agents:[
+    {name:'Marketing Director', resp:'Owns overall marketing strategy for a deliverable/launch.', auth:'Owns channel strategy.', esc:'Creative Director on brand-tone conflicts.', mem:'Asset Library doctrine'},
+    {name:'Social Media Manager', resp:'Platform-specific content adaptation and posting cadence.', auth:'Owns platform execution.', esc:'Marketing Director.', mem:'Project Memory'},
+    {name:'SEO Specialist', resp:'Discoverability — metadata, titles, on-page/on-platform optimization.', auth:'Owns SEO tactics.', esc:'Marketing Director.', mem:'Project Memory'},
+    {name:'Growth Strategist', resp:'Funnel/retention/distribution strategy beyond a single launch.', auth:'Owns growth tactics.', esc:'Marketing Director on strategy conflicts.', mem:'Analytics data'},
+    {name:'Launch Manager', resp:'Coordinates a launch across every Guild that touches it.', auth:'Owns launch sequencing.', esc:'Producer on scope/timeline conflicts.', mem:'validationLedger'},
+    {name:'Community Manager', resp:'Ongoing audience relationship management post-launch.', auth:'Owns community tactics.', esc:'Marketing Director.', mem:'Project Memory'},
+    {name:'Analytics Agent', resp:'Defines what to track and reports back findings.', auth:'Owns measurement methodology.', esc:'Growth Strategist on what to prioritize.', mem:'Feeds Lab lessons-learned'},
+  ]},
+  { key:'web3d', name:'Web/Interactive, UI & 3D Studio', color:0xf2c879, radius:6.7, tilt:1.9, agents:[
+    {name:'Website Architect', resp:'Site structure, information architecture, page-level continuity.', auth:'Owns structural decisions.', esc:'Brand & Identity Guild Lead on doctrine fit.', mem:'Project Memory'},
+    {name:'UI Designer', resp:'Interface-level design system, components, interaction patterns.', auth:'Owns UI execution.', esc:'Website Architect.', mem:'Asset Library (if promoted)'},
+    {name:'3D Engineer', resp:'Three.js / React / Spline pipeline — 3D web builds, interactive scenes.', auth:'Owns technical feasibility calls for 3D web.', esc:'Website Architect on scope and doctrine fit.', mem:'Project Memory'},
+  ]},
+  { key:'bizops', name:'Business Operations', color:0x8a94a6, radius:7.7, tilt:-1.4, agents:[
+    {name:'Business Operations Lead', resp:'Studio-level operational concerns — process, not creative content.', auth:'Owns process, not creative calls.', esc:'Creative Director if process conflicts with creative discipline.', mem:'Asset Library lessons-learned'},
+    {name:'Client Manager', resp:'Client-facing communication and expectation-setting.', auth:'Owns client relationship framing.', esc:'Producer on scope commitments made to a client.', mem:'Project Memory'},
+    {name:'Knowledge Librarian', resp:'Studio SOPs — process documentation, distinct from creative canon.', auth:'Owns documentation structure.', esc:'Business Operations Lead.', mem:'Separate store — process knowledge, not creative canon'},
+    {name:'Plugin/Integration Engineer', resp:'External API integration, plugin architecture.', auth:'Owns technical integration decisions.', esc:'Business Operations Lead on overlap disputes.', mem:'asset-library-schema.json integrations object'},
+  ]},
+  { key:'research', name:'Research & Automation Lab', color:0x8a94a6, radius:5.7, tilt:-2.3, agents:[
+    {name:'Research Agent', resp:'Verifies claims about model capability or market landscape before they\'re assumed elsewhere.', auth:'Owns fact-finding, not the decision made from it.', esc:'Business Operations Lead on disputed findings; Model Router advisory on model-capability questions. Findings return to the requester as output, not escalation.', mem:'Feeds Asset Library lessons-learned'},
+    {name:'Automation Engineer', resp:'Identifies and removes repetitive manual work across Guilds.', auth:'Owns automation implementation, not process changes affecting creative discipline.', esc:'Business Operations Lead.', mem:'N/A'},
+    {name:'Innovation Lab Lead', resp:'3–5 year horizon thinking, modular-architecture proposals.', auth:'Owns exploration, never implementation authority.', esc:'Creative Director before anything speculative gets adopted.', mem:'architectural-principles.md'},
+    {name:'Prompt Engineer', resp:'Stage 6: turns a locked UFDM shot into a model-specific prompt.', auth:'Owns compilation technique.', esc:'Model Router on capability-vs-compilation mismatch; Producer if unresolved.', mem:'prompt-compiler.md'},
+    {name:'Asset Manager', resp:'Day-to-day within-project asset handling (fingerprinting, locking).', auth:'Owns within-project asset discipline.', esc:'Asset Librarian on cross-project promotion.', mem:'Asset fingerprint records (project-level)'},
+  ]},
+  { key:'brand', name:'Brand & Identity Guild', color:0xc1652b, radius:9.2, tilt:0.35, agents:[
+    {name:'Brand & Identity Guild Lead', resp:'Owns brand doctrine — the color/type/tone canon in the Asset Library doctrine object — and its interpretation when a deliverable is ambiguous against it.', auth:'Owns brand doctrine and doctrine interpretation; cannot override locked project-level creative canon.', esc:'Creative Director on doctrine conflicts.', mem:'Asset Library doctrine object'},
+  ]},
+];
+
+const STAGES = [
+  'Ideation → Film Bible','Story & Character','Cinematography Design','Production Planning',
+  'Scene Simulation','Model Routing & Budget Check','Prompt Compilation',
+  'Model-Specific Generation','Validation & Repair','Learning'
+];
+
+  return { GUILDS: GUILDS, STAGES: STAGES };
+});
+
+
+/* ===== module: components/text-roster.js ===== */
+/*!
+ * components/text-roster.js — WorldForge OS P4 (UMD)
+ * Text-only fallback for the 3D escalation visualization. Semantic list
+ * markup, roving-tabindex keyboard nav (Arrow keys move, Enter/click
+ * expands escalation chain, Escape collapses), visible focus.
+ * Minimal roster shape: { id, name, guild, escalates_to }.
+ */
+(function (root, factory) {
+  "use strict";
+  root.WF = root.WF || {};
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(root.WF);
+  } else {
+    root.WF.TextRoster = factory(root.WF);
+  }
+})(typeof self !== "undefined" ? self : globalThis, function (WF) {
+  "use strict";
+
+  var esc = function (s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+  var cssEsc = function (s) {
+    return (window.CSS && window.CSS.escape) ? CSS.escape(s) : String(s).replace(/[^\w-]/g, "\\$&");
+  };
+
+  // ADAPTER SEAM — maps the in-app GUILDS shape (guilds-data.js) into the
+  // minimal roster. escalates_to resolved from the prose `esc` field by
+  // leading name match; unmatched prose stays null (renders as terminal).
+  function toMinimalRoster(guilds) {
+    var flat = [];
+    (guilds || []).forEach(function (g) {
+      (g.agents || []).forEach(function (a) {
+        flat.push({ id: a.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), name: a.name, guild: g.name, escProse: a.esc || "" });
+      });
+    });
+    var byName = {};
+    flat.forEach(function (a) { byName[a.name] = a; });
+    flat.forEach(function (a) {
+      a.escalates_to = null;
+      for (var name in byName) {
+        if (name !== a.name && a.escProse.indexOf(name) === 0) { a.escalates_to = byName[name].id; break; }
+      }
+      delete a.escProse;
+    });
+    return flat;
+  }
+
+  class TextRoster {
+  constructor(mount, roster) {
+    this.el = mount;
+    this.roster = roster;                 // minimal shape
+    this.byId = new Map(roster.map(a => [a.id, a]));
+    this.expanded = new Set();
+  }
+
+  escalationChain(agent) {
+    const chain = [];
+    let cur = agent, guard = 0;
+    while (cur?.escalates_to && guard++ < 16) {       // cycle guard
+      cur = this.byId.get(cur.escalates_to);
+      if (!cur || chain.includes(cur)) break;
+      chain.push(cur);
+    }
+    return chain;
+  }
+
+  mount() {
+    const byGuild = {};
+    for (const a of this.roster) (byGuild[a.guild] ||= []).push(a);
+
+    this.el.innerHTML = `
+      <div class="tr-note" role="note">
+        3D visualization unavailable — showing text roster.
+      </div>
+      ${Object.entries(byGuild).map(([guild, agents]) => `
+        <section class="tr-guild" aria-label="Guild: ${esc(guild)}">
+          <h3>${esc(guild)}</h3>
+          <ul role="list">
+            ${agents.map(a => `
+              <li role="listitem">
+                <button class="tr-agent" data-id="${esc(a.id)}"
+                        aria-expanded="false"
+                        aria-label="${esc(a.name)}, ${esc(guild)} guild. Enter to show escalation path.">
+                  ${esc(a.name)}
+                </button>
+                <div class="tr-chain" id="chain-${esc(a.id)}" hidden></div>
+              </li>`).join("")}
+          </ul>
+        </section>`).join("")}
+      <div class="tr-legend" aria-label="Legend">
+        <h3>Legend</h3>
+        <dl>
+          <dt>Indent</dt><dd>one escalation hop</dd>
+          <dt>&#8594; terminal</dt><dd>end of escalation path (no further escalation)</dd>
+        </dl>
+      </div>`;
+
+    // Roving tabindex + keyboard map
+    const buttons = [...this.el.querySelectorAll(".tr-agent")];
+    buttons.forEach((b, i) => (b.tabIndex = i === 0 ? 0 : -1));
+    this.el.addEventListener("keydown", (e) => {
+      const i = buttons.indexOf(document.activeElement);
+      if (i < 0) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const next = buttons[(i + (e.key === "ArrowDown" ? 1 : buttons.length - 1)) % buttons.length];
+        buttons[i].tabIndex = -1; next.tabIndex = 0; next.focus();
+      }
+      if (e.key === "Escape") this.collapse(document.activeElement?.dataset?.id);
+    });
+    this.el.addEventListener("click", (e) => {
+      const b = e.target.closest(".tr-agent");
+      if (b) this.toggle(b.dataset.id);
+    });
+    return this;
+  }
+
+  toggle(id) { this.expanded.has(id) ? this.collapse(id) : this.expand(id); }
+
+  expand(id) {
+    const a = this.byId.get(id);
+    if (!a) return;
+    this.expanded.add(id);
+    const chain = this.escalationChain(a);
+    const box = this.el.querySelector(`#chain-${cssEsc(id)}`);
+    const btn = this.el.querySelector(`.tr-agent[data-id="${cssEsc(id)}"]`);
+    box.hidden = false;
+    btn?.setAttribute("aria-expanded", "true");
+    box.innerHTML = chain.length
+      ? `<ol class="tr-esc" aria-label="Escalation path for ${esc(a.name)}">
+           ${chain.map((c, d) => `
+             <li style="--depth:${d + 1}">
+               ${esc(c.name)} <span class="tr-g">(${esc(c.guild)})</span>
+               ${d === chain.length - 1 ? '<span class="tr-term">&#8594; terminal</span>' : ""}
+             </li>`).join("")}
+         </ol>`
+      : `<p class="tr-esc-none">No escalation — terminal agent.</p>`;
+  }
+
+  collapse(id) {
+    if (!id) return;
+    this.expanded.delete(id);
+    const box = this.el.querySelector(`#chain-${cssEsc(id)}`);
+    const btn = this.el.querySelector(`.tr-agent[data-id="${cssEsc(id)}"]`);
+    if (box) { box.hidden = true; box.innerHTML = ""; }
+    btn?.setAttribute("aria-expanded", "false");
+  }
+}
+
+  return { TextRoster: TextRoster, toMinimalRoster: toMinimalRoster };
+});
+
+
+/* ===== module: components/escalation-viz.js ===== */
+/*!
+ * components/escalation-viz.js — WorldForge OS P4 (UMD)
+ * The 3D explore + forge scene, carried verbatim from monolith block 01
+ * lines 73-257 and wrapped in a mount factory. Deps (vendor-loader's THREE,
+ * guilds data) are INJECTED — this module never probes capabilities and
+ * never loads Three itself (app.js is the sole mode-decider).
+ *
+ * Contract: WF.EscalationViz.mount(stageEl, THREE, { GUILDS, STAGES })
+ *   -> { setMode(mode), updateStationColors(idx|null), destroy() }
+ * DOM it touches beyond stageEl: agent panel ids (ap-*), #agent-panel,
+ * #agent-close — same as legacy.
+ */
+(function (root, factory) {
+  "use strict";
+  root.WF = root.WF || {};
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(root.WF);
+  } else {
+    root.WF.EscalationViz = factory(root.WF);
+  }
+})(typeof self !== "undefined" ? self : globalThis, function (WF) {
+  "use strict";
+
+  function mount(stageEl, THREE, data) {
+    var GUILDS = data.GUILDS, STAGES = data.STAGES;
+
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x0b0a0d, 0.026);
+
+    var camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+    camera.position.set(0, 4, 23);
+
+    var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    stageEl.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0x33394a, 1.1));
+    var key = new THREE.PointLight(0xc1652b, 2.2, 45);
+    scene.add(key);
+    var rim = new THREE.PointLight(0xf2c879, 0.8, 60);
+    rim.position.set(-10, 12, -10);
+    scene.add(rim);
+
+    var starGeo = new THREE.BufferGeometry();
+    var starCount = 800;
+    var starPos = new Float32Array(starCount * 3);
+    for (var si = 0; si < starCount; si++) {
+      var r = 40 + Math.random() * 60, th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 2 - 1);
+      starPos[si * 3] = r * Math.sin(ph) * Math.cos(th); starPos[si * 3 + 1] = r * Math.sin(ph) * Math.sin(th); starPos[si * 3 + 2] = r * Math.cos(ph);
+    }
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x39404e, size: 0.06 })));
+
+    /* ---- EXPLORE group ---- */
+    var exploreGroup = new THREE.Group();
+    scene.add(exploreGroup);
+    var core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 2), new THREE.MeshStandardMaterial({ color: 0xc1652b, emissive: 0xc1652b, emissiveIntensity: 0.9, roughness: 0.35, metalness: 0.4 }));
+    exploreGroup.add(core);
+    var coreWire = new THREE.Mesh(new THREE.IcosahedronGeometry(1.32, 1), new THREE.MeshBasicMaterial({ color: 0xc1652b, wireframe: true, transparent: true, opacity: 0.25 }));
+    exploreGroup.add(coreWire);
+
+    var clickableAgents = [];
+    GUILDS.forEach(function (guild) {
+      var ringGroup = new THREE.Group();
+      ringGroup.rotation.x = guild.tilt; ringGroup.rotation.y = guild.tilt * 0.6;
+      exploreGroup.add(ringGroup);
+      var curve = new THREE.EllipseCurve(0, 0, guild.radius, guild.radius, 0, Math.PI * 2, false, 0);
+      var pts = curve.getPoints(96).map(function (p) { return new THREE.Vector3(p.x, 0, p.y); });
+      ringGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: guild.color, transparent: true, opacity: 0.28 })));
+      var n = guild.agents.length;
+      guild.agents.forEach(function (agent, i) {
+        var angle = (i / n) * Math.PI * 2, x = Math.cos(angle) * guild.radius, z = Math.sin(angle) * guild.radius;
+        var node = new THREE.Mesh(new THREE.SphereGeometry(guild.key === "core" ? 0.2 : 0.14, 20, 20), new THREE.MeshStandardMaterial({ color: guild.color, emissive: guild.color, emissiveIntensity: 0.5, roughness: 0.4, metalness: 0.3 }));
+        node.position.set(x, 0, z);
+        node.userData = { guildName: guild.name, agent: agent };
+        ringGroup.add(node);
+        clickableAgents.push(node);
+        var spokeGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(x, 0, z)]);
+        ringGroup.add(new THREE.Line(spokeGeo, new THREE.LineBasicMaterial({ color: guild.color, transparent: true, opacity: 0.1 })));
+      });
+    });
+
+    /* ---- FORGE group: spiral stage rail + project markers ---- */
+    var forgeGroup = new THREE.Group();
+    forgeGroup.visible = false;
+    scene.add(forgeGroup);
+
+    var stationPositions = [];
+    var stationCount = STAGES.length;
+    for (var i = 0; i < stationCount; i++) {
+      var t2 = i / (stationCount - 1);
+      var angle2 = t2 * Math.PI * 2.4;
+      var radius2 = 3.5 + t2 * 4.2;
+      var y2 = -3 + t2 * 6;
+      stationPositions.push(new THREE.Vector3(Math.cos(angle2) * radius2, y2, Math.sin(angle2) * radius2));
+    }
+    var railCurve = new THREE.CatmullRomCurve3(stationPositions);
+    forgeGroup.add(new THREE.Mesh(new THREE.TubeGeometry(railCurve, 200, 0.035, 8, false), new THREE.MeshBasicMaterial({ color: 0x4a5568, transparent: true, opacity: 0.5 })));
+
+    var stationMeshes = stationPositions.map(function (pos) {
+      var m = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 20), new THREE.MeshStandardMaterial({ color: 0x4a5568, emissive: 0x4a5568, emissiveIntensity: 0.3, roughness: 0.5 }));
+      m.position.copy(pos);
+      forgeGroup.add(m);
+      return m;
+    });
+
+    var marker = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 24), new THREE.MeshStandardMaterial({ color: 0xf2c879, emissive: 0xf2c879, emissiveIntensity: 1.2, roughness: 0.2, metalness: 0.5 }));
+    marker.visible = false;
+    forgeGroup.add(marker);
+    var markerGlow = new THREE.PointLight(0xf2c879, 0, 8);
+    forgeGroup.add(markerGlow);
+
+    function updateStationColors(currentStageIdx) {
+      stationMeshes.forEach(function (m, idx) {
+        var done = currentStageIdx !== null && idx <= currentStageIdx;
+        var c = done ? 0xc1652b : 0x4a5568;
+        m.material.color.setHex(c); m.material.emissive.setHex(c);
+        m.material.emissiveIntensity = done ? 0.7 : 0.3;
+      });
+      if (currentStageIdx !== null) {
+        marker.visible = true; markerGlow.intensity = 1.6;
+        marker.position.copy(stationPositions[currentStageIdx]);
+        markerGlow.position.copy(stationPositions[currentStageIdx]);
+      } else {
+        marker.visible = false; markerGlow.intensity = 0;
+      }
+    }
+    updateStationColors(null);
+
+    /* ---- camera drag-orbit ---- */
+    var isDragging = false, prevX = 0, prevY = 0, dragDist = 0, rotY = 0.4, rotX = 0.15, autoRotate = true;
+    var currentMode = "explore";
+
+    function onPointerDown(e) { isDragging = true; dragDist = 0; prevX = e.clientX; prevY = e.clientY; stageEl.classList.add("dragging"); autoRotate = false; }
+    function onPointerMove(e) {
+      if (!isDragging) return;
+      var dx = e.clientX - prevX, dy = e.clientY - prevY;
+      dragDist += Math.abs(dx) + Math.abs(dy);
+      rotY += dx * 0.005; rotX += dy * 0.003; rotX = Math.max(-1.1, Math.min(1.1, rotX));
+      prevX = e.clientX; prevY = e.clientY;
+    }
+    function onPointerUp(e) {
+      isDragging = false; stageEl.classList.remove("dragging");
+      if (dragDist < 5) handleClick(e);
+    }
+    function onWheel(e) { e.preventDefault(); camera.position.z += e.deltaY * 0.01; camera.position.z = Math.max(8, Math.min(40, camera.position.z)); }
+    function onResize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); }
+
+    stageEl.addEventListener("pointerdown", onPointerDown);
+    addEventListener("pointermove", onPointerMove);
+    addEventListener("pointerup", onPointerUp);
+    stageEl.addEventListener("wheel", onWheel, { passive: false });
+    addEventListener("resize", onResize);
+
+    /* ---- raycaster + agent panel ---- */
+    var raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+    function handleClick(e) {
+      if (currentMode !== "explore") return;
+      pointer.x = (e.clientX / innerWidth) * 2 - 1; pointer.y = -(e.clientY / innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      var hits = raycaster.intersectObjects(clickableAgents);
+      if (hits.length) openAgentPanel(hits[0].object.userData);
+    }
+
+    var selectedAgentNode = null;
+    function openAgentPanel(data2) {
+      if (selectedAgentNode) selectedAgentNode.scale.setScalar(1);
+      selectedAgentNode = clickableAgents.find(function (nd) { return nd.userData.agent === data2.agent; });
+      if (selectedAgentNode) selectedAgentNode.scale.setScalar(1.8);
+      document.getElementById("ap-guild").textContent = data2.guildName;
+      document.getElementById("ap-name").textContent = data2.agent.name;
+      document.getElementById("ap-resp").textContent = data2.agent.resp;
+      document.getElementById("ap-auth").textContent = data2.agent.auth;
+      document.getElementById("ap-esc").textContent = data2.agent.esc;
+      document.getElementById("ap-mem").textContent = data2.agent.mem;
+      document.getElementById("agent-panel").classList.add("open");
+      document.getElementById("agent-close").style.display = "block";
+    }
+    function onAgentClose() {
+      document.getElementById("agent-panel").classList.remove("open");
+      document.getElementById("agent-close").style.display = "none";
+      if (selectedAgentNode) { selectedAgentNode.scale.setScalar(1); selectedAgentNode = null; }
+    }
+    document.getElementById("agent-close").onclick = onAgentClose;
+
+    /* ---- animate loop ---- */
+    var t = 0, rafId = 0, destroyed = false;
+    function animate() {
+      if (destroyed) return;
+      rafId = requestAnimationFrame(animate);
+      t += 0.01;
+      if (autoRotate) rotY += 0.0009;
+      var activeGroup = currentMode === "explore" ? exploreGroup : forgeGroup;
+      activeGroup.rotation.y = rotY; activeGroup.rotation.x = rotX;
+      core.rotation.y += 0.004; core.rotation.x += 0.002; coreWire.rotation.y -= 0.002;
+      var pulse = 0.85 + Math.sin(t * 1.6) * 0.15;
+      core.material.emissiveIntensity = 0.9 * pulse;
+      key.intensity = 2.0 + Math.sin(t * 1.6) * 0.3;
+      if (currentMode === "explore") {
+        clickableAgents.forEach(function (nd, idx) { if (nd !== selectedAgentNode) { nd.scale.setScalar(1 + Math.sin(t * 2 + idx) * 0.04); } });
+      } else if (marker.visible) {
+        marker.position.y += Math.sin(t * 3) * 0.002;
+      }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    /* ---- public handle ---- */
+    return {
+      setMode: function (mode) {
+        currentMode = mode;
+        exploreGroup.visible = (mode === "explore");
+        forgeGroup.visible = (mode === "forge");
+        if (mode === "explore") onAgentClose();
+      },
+      updateStationColors: updateStationColors,
+      destroy: function () {
+        destroyed = true;
+        cancelAnimationFrame(rafId);
+        stageEl.removeEventListener("pointerdown", onPointerDown);
+        removeEventListener("pointermove", onPointerMove);
+        removeEventListener("pointerup", onPointerUp);
+        stageEl.removeEventListener("wheel", onWheel);
+        removeEventListener("resize", onResize);
+        renderer.dispose();
+        if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
+      }
+    };
+  }
+
+  return { mount: mount };
+});
+
+
+/* ===== module: components/forge.js ===== */
+/*!
+ * components/forge.js — WorldForge OS P4 (UMD)
+ * The forge floor UI carried from monolith block 01: project list, detail
+ * rail, decision record render, gate modal, new-project modal, toast.
+ * ALL kernel access goes through the injected adapter — this file contains
+ * zero storage calls and zero direct kernel references. Gate copy text
+ * lives in the pipeline (app.js), not here: the UI renders gates, the
+ * kernel enforces them.
+ *
+ * Contract: WF.Forge.mount(adapter, { onStageChange(idx|null) })
+ */
+(function (root, factory) {
+  "use strict";
+  root.WF = root.WF || {};
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(root.WF);
+  } else {
+    root.WF.Forge = factory(root.WF);
+  }
+})(typeof self !== "undefined" ? self : globalThis, function (WF) {
+  "use strict";
+
+  function mount(adapter, hooks) {
+    hooks = hooks || {};
+    var onStageChange = hooks.onStageChange || function () {};
+    var STAGES = adapter.stages;
+    var activeProjectId = null;
+    var myName = "";
+
+    var $ = function (id) { return document.getElementById(id); };
+
+    function toast(msg) {
+      var el = $("toast");
+      el.textContent = msg; el.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { el.classList.remove("show"); }, 2600);
+    }
+
+    function escapeHtml(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
+
+    /* ---- render ---- */
+    function renderProjectList() {
+      var projects = adapter.getProjects();
+      var list = $("project-list");
+      var empty = $("floor-empty");
+      list.innerHTML = "";
+      if (projects.length === 0) { empty.style.display = "block"; return; }
+      empty.style.display = "none";
+      projects.slice().sort(function (a, b) { return b.updatedAt - a.updatedAt; }).forEach(function (p) {
+        var card = document.createElement("div");
+        card.className = "project-card" + (p.id === activeProjectId ? " selected" : "");
+        var pct = Math.round((p.stage / (STAGES.length - 1)) * 100);
+        card.innerHTML =
+          '<div class="pname">' + escapeHtml(p.name) + '</div>' +
+          '<div class="pmeta">' + escapeHtml(p.type) + ' · forged by ' + escapeHtml(p.createdBy) + '</div>' +
+          '<div class="pmeta" style="margin-top:4px;">Stage ' + (p.stage + 1) + '/' + STAGES.length + ' — ' + escapeHtml(STAGES[p.stage]) + '</div>' +
+          '<div class="pbar"><div style="width:' + pct + '%"></div></div>';
+        card.onclick = function () { activeProjectId = p.id; renderProjectList(); renderDetail(p); $("forge-detail").classList.add("visible"); };
+        list.appendChild(card);
+      });
+    }
+
+    function renderDetail(p) {
+      hooks.onProjectSelect && hooks.onProjectSelect(p.id);
+      $("fd-name").textContent = p.name;
+      $("fd-meta").textContent = p.type + " · forged by " + p.createdBy + " · last touched by " + p.lastTouchedBy;
+      var rail = $("fd-rail");
+      rail.innerHTML = "";
+      STAGES.forEach(function (label, i) {
+        var row = document.createElement("div");
+        row.className = "rail-station" + (i < p.stage ? " done" : i === p.stage ? " current" : "");
+        row.innerHTML = '<div class="num mono">' + (i < p.stage ? "✓" : i + 1) + '</div><div class="label">' + label + (adapter.gateFor(i) ? ' <span style="color:var(--spark);opacity:.7;">⛨</span>' : "") + '</div>';
+        rail.appendChild(row);
+      });
+      var btn = $("advance-btn");
+      if (p.stage >= STAGES.length - 1) { btn.disabled = true; btn.textContent = "Learning complete — forged"; }
+      else {
+        btn.disabled = false;
+        btn.textContent = adapter.gateFor(p.stage)
+          ? 'Pass gate → "' + STAGES[p.stage + 1] + '"'
+          : 'Advance to "' + STAGES[p.stage + 1] + '"';
+      }
+      $("stepback-btn").disabled = (p.stage === 0);
+      $("notes-box").value = p.notes || "";
+      renderDecisions(p);
+      onStageChange(p.stage);
+    }
+
+    function renderDecisions(p) {
+      var box = $("fd-decisions");
+      box.innerHTML = "";
+      var ds = (p.decisions || []).slice().sort(function (a, b) { return b.ts - a.ts; });
+      if (ds.length === 0) {
+        box.innerHTML = '<div class="d-empty">Nothing on the record yet. Gate confirmations and step-backs land here — a decision with real weight gets recorded, not just decided (Rule 7).</div>';
+        return;
+      }
+      ds.forEach(function (d) {
+        var row = document.createElement("div");
+        row.className = "d-row";
+        var when = new Date(d.ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        var kindLabel = d.kind === "step-back" ? "reversal" : d.kind === "gate-override" ? "override" : "gate passed";
+        row.innerHTML =
+          '<div class="d-meta"><span class="d-kind-' + escapeHtml(d.kind) + '">' + kindLabel + '</span> · ' + escapeHtml(d.by) + ' · ' + when + '</div>' +
+          '<div class="d-label">' + escapeHtml(d.label) + '</div>' +
+          (d.note ? '<div class="d-note">' + escapeHtml(d.note) + '</div>' : '');
+        box.appendChild(row);
+      });
+    }
+
+    /* ---- gate modal (window.confirm is unreliable in sandboxed frames) ---- */
+    var gateResolve = null;
+    function askGate(opts) {
+      return new Promise(function (resolve) {
+        gateResolve = resolve;
+        $("gate-title").textContent = opts.title;
+        $("gate-text").textContent = opts.text;
+        var rl = $("gate-reason-label");
+        var rb = $("gate-reason");
+        rb.value = "";
+        rl.style.display = opts.requireReason ? "block" : "none";
+        rb.style.display = opts.requireReason ? "block" : "none";
+        $("gate-override-btn").hidden = !opts.allowOverride;
+        $("gate-backdrop").classList.add("visible");
+        if (opts.requireReason) rb.focus();
+      });
+    }
+    function closeGate(result) {
+      $("gate-backdrop").classList.remove("visible");
+      if (gateResolve) { var r = gateResolve; gateResolve = null; r(result); }
+    }
+    $("gate-cancel").onclick = function () { closeGate(null); };
+    $("gate-override-btn").onclick = function () { closeGate({ override: true }); };
+    $("gate-confirm").onclick = function () {
+      var rb = $("gate-reason");
+      var requireReason = rb.style.display !== "none";
+      var reason = rb.value.trim();
+      if (requireReason && !reason) { toast("A recorded reason is required."); return; }
+      closeGate({ reason: reason });
+    };
+
+    /* ---- actions (mutation semantics live in the kernel) ---- */
+    $("advance-btn").onclick = async function () {
+      if (!activeProjectId) return;
+      var attempt = await adapter.advance(activeProjectId, null);
+      if (!attempt.ok && attempt.reason === "gate") {
+        var res = await askGate({
+          title: attempt.gate.title, text: attempt.gate.text, requireReason: false,
+          allowOverride: !!hooks.onGateOverride
+        });
+        if (!res) return; // not yet — nothing advances
+        if (res.override) {
+          // P4-UI1: ceremony, record, and stage move all live behind the
+          // seam (UI1-K1: kernel advance {override:true} is atomic). A null
+          // rec means cancelled — nothing was recorded, nothing advanced.
+          var rec = await hooks.onGateOverride(activeProjectId, attempt.project.stage);
+          if (!rec) return;
+          var fresh = await adapter.freshen(activeProjectId);
+          renderProjectList();
+          if (fresh) renderDetail(fresh);
+          toast("Gate overridden — on the record.");
+          return;
+        }
+        attempt = await adapter.advance(activeProjectId, { gatePassed: true, reason: res.reason });
+      }
+      if (attempt.ok) {
+        renderProjectList(); renderDetail(attempt.project);
+        toast('Advanced to "' + STAGES[attempt.project.stage] + '"');
+      } else if (attempt.reason === "complete") {
+        renderProjectList(); renderDetail(attempt.project);
+      }
+    };
+
+    $("stepback-btn").onclick = async function () {
+      if (!activeProjectId) return;
+      var p = adapter.getProject(activeProjectId);
+      if (!p || p.stage === 0) { if (p) renderDetail(p); return; }
+      var res = await askGate({
+        title: "Step back a stage",
+        text: 'Return "' + p.name + '" from "' + STAGES[p.stage] + '" to "' + STAGES[p.stage - 1] + '". A reversal is a decision — it goes on the record (Rule 7).',
+        requireReason: true
+      });
+      if (!res) return;
+      var out = await adapter.stepBack(activeProjectId, res.reason);
+      if (out.ok) {
+        renderProjectList(); renderDetail(out.project);
+        toast('Stepped back to "' + STAGES[out.project.stage] + '"');
+      }
+    };
+
+    $("save-notes").onclick = async function () {
+      if (!activeProjectId) return;
+      try {
+        await adapter.saveNotes(activeProjectId, $("notes-box").value);
+        toast("Notes saved.");
+      } catch (e) { toast("Save failed — try again."); }
+    };
+
+    $("delete-project").onclick = async function () {
+      var id = activeProjectId;
+      if (!id) return;
+      var p = adapter.getProject(id);
+      var res = await askGate({
+        title: "Strike from the floor",
+        text: 'Remove "' + (p ? p.name : "this project") + '" for everyone on the floor. This can\'t be undone.',
+        requireReason: false
+      });
+      if (!res) return;
+      activeProjectId = null;
+      hooks.onProjectSelect && hooks.onProjectSelect(null);
+      $("forge-detail").classList.remove("visible");
+      try { await adapter.deleteProject(id); }
+      catch (e) { toast("Delete may not have synced — reload the floor."); }
+      renderProjectList();
+      onStageChange(null);
+      toast("Struck from the floor.");
+    };
+
+    /* ---- new project modal ---- */
+    var backdrop = $("modal-backdrop");
+    $("start-forging").onclick = function () {
+      $("in-forgername").value = myName;
+      backdrop.classList.add("visible");
+    };
+    $("modal-cancel").onclick = function () { backdrop.classList.remove("visible"); };
+    $("modal-confirm").onclick = async function () {
+      var name = $("in-forgername").value.trim();
+      var pname = $("in-projectname").value.trim();
+      var ptype = $("in-type").value;
+      if (!name || !pname) { toast("Name and project both needed to forge."); return; }
+      myName = name;
+      await adapter.saveProfile(name);
+      hooks.onActorChange && hooks.onActorChange(name);
+      try {
+        var proj = await adapter.createProject({ name: pname, type: ptype });
+        activeProjectId = proj.id;
+        backdrop.classList.remove("visible");
+        renderProjectList(); renderDetail(proj);
+        $("forge-detail").classList.add("visible");
+        toast('"' + pname + '" is on the floor.');
+      } catch (e) { toast("Save failed — the floor may be out of sync."); }
+    };
+
+    /* ---- public handle ---- */
+    return {
+      refresh: async function () {
+        await adapter.loadProjects();
+        renderProjectList();
+        if (activeProjectId) {
+          var p = adapter.getProject(activeProjectId);
+          if (p) renderDetail(p);
+          else { activeProjectId = null; $("forge-detail").classList.remove("visible"); onStageChange(null); }
+        }
+      },
+      setActor: function (name) { myName = name; },
+      hideDetail: function () { $("forge-detail").classList.remove("visible"); },
+      hasActive: function () { return !!activeProjectId; }
+    };
+  }
+
+  return { mount: mount };
+});
+
+
+/* ===== module: wf-gate-override.v1.js ===== */
+/*!
+ * wf-gate-override.v1.js — WorldForge OS P4-UI1: gate-override affordance
+ *
+ * Ratified 2026-07-18 (P4-UI1-D1): the override surface ships in the UI.
+ * An override is a decision, not a shortcut — this component exists to make
+ * the ceremony cheap and the record mandatory, mirroring Step Back (Rule 7).
+ *
+ * Contract: WFComponent (mount/update/destroy), kernel-owned state, view
+ * state only in the component, single kernel dispatch per commit.
+ *
+ * Integration (Claude Code, real tree):
+ *   src/forge-ui.js — where a gate modal renders its Pass/Cancel actions,
+ *   add an "Override…" tertiary action that constructs
+ *     new WFGateOverride(kernel, { mount, projectId, stageId, onDone })
+ *   Shell CSS already carries the d-kind-gate-override hook (verified in
+ *   shell.html grep, 2026-07-17 session).
+ *
+ * MARKER UI1-K1: exact kernel write method for an override record. This
+ * module capability-detects, in order:
+ *   kernel.recordGateOverride(projectId, rec)   — preferred, add if absent
+ *   kernel.recordDecision(projectId, rec)       — generic decision write
+ *   kernel.ext.decisionLog.append(projectId, rec) — ext seam fallback
+ * Whichever exists first is used; if none exist the commit fails LOUDLY in
+ * the UI (fail-closed — an unrecordable override must not happen).
+ * Burn this marker against worldforge-kernel.v1.1.js in the real tree.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.WFGateOverride = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  var REASON_FLOOR = 10; // GOV-7 spirit: advisory, not a hard gate
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function writeSeam(kernel) {
+    if (typeof kernel.recordGateOverride === "function")
+      return function (pid, rec) { return kernel.recordGateOverride(pid, rec); };
+    if (typeof kernel.recordDecision === "function")
+      return function (pid, rec) { return kernel.recordDecision(pid, rec); };
+    var ext = kernel.ext && kernel.ext.decisionLog;
+    if (ext && typeof ext.append === "function")
+      return function (pid, rec) { return ext.append(pid, rec); };
+    return null; // MARKER UI1-K1 unresolved at runtime → fail-closed
+  }
+
+  function WFGateOverride(kernel, opts) {
+    this.kernel = kernel;
+    this.el = opts.mount;
+    this.projectId = opts.projectId;
+    this.stageId = opts.stageId;
+    this.onDone = opts.onDone || function () {};
+    this.defaultActor = opts.actor || "human"; // ACT-1 interim convention
+    this._committing = false;
+  }
+
+  WFGateOverride.prototype.mount = function () {
+    this.update();
+    return this;
+  };
+
+  WFGateOverride.prototype.update = function () {
+    var el = this.el;
+    el.innerHTML =
+      '<div class="panel gate-override" role="dialog" aria-modal="true" aria-labelledby="wfgo-h">' +
+      '<h3 id="wfgo-h">Override gate — stage ' + esc(this.stageId) + "</h3>" +
+      '<p class="warn">An override bypasses this gate\u2019s check. It is written to the ' +
+      "decision record with your name and reason, permanently, next to every clean pass.</p>" +
+      '<label>Actor <input name="actor" value="' + esc(this.defaultActor) + '" autocomplete="off"></label>' +
+      '<label>Reason (required) <textarea name="reason" rows="3" ' +
+      'placeholder="Why is bypassing this gate the right call?"></textarea></label>' +
+      '<div class="findings" aria-live="polite"></div>' +
+      '<div class="actions">' +
+      '<button type="button" class="danger" data-act="commit">Record override &amp; advance</button>' +
+      '<button type="button" data-act="cancel">Cancel</button>' +
+      "</div></div>";
+
+    var self = this;
+    el.querySelector('[data-act="cancel"]').onclick = function () { self.destroy(); self.onDone(null); };
+    el.querySelector('[data-act="commit"]').onclick = function () { self._commit(); };
+    var ta = el.querySelector("textarea[name=reason]");
+    ta.oninput = function () {
+      var box = el.querySelector(".findings");
+      var v = ta.value.trim();
+      box.textContent =
+        v && v.length < REASON_FLOOR
+          ? "Reason is under " + REASON_FLOOR + " characters — write it for the reviewer, not the checkbox (GOV-7)."
+          : "";
+    };
+    ta.focus();
+  };
+
+  WFGateOverride.prototype._commit = function () {
+    if (this._committing) return;
+    var el = this.el;
+    var box = el.querySelector(".findings");
+    var actor = el.querySelector("input[name=actor]").value.trim();
+    var reason = el.querySelector("textarea[name=reason]").value.trim();
+    if (!reason) { box.textContent = "A reason is required (GOV-1 / Rule 7). No silent overrides."; return; }
+    if (!actor) { box.textContent = "An actor is required (GOV-1b / Rule 7)."; return; }
+
+    var write = writeSeam(this.kernel);
+    if (!write) {
+      box.textContent =
+        "FATAL: no kernel decision-write seam found (MARKER UI1-K1). " +
+        "Override NOT recorded, gate NOT advanced. Fix the kernel binding.";
+      return;
+    }
+    var rec = {
+      kind: "gate-override",       // renders via d-kind-gate-override
+      stage_id: this.stageId,
+      actor: actor,                // ACT-1: kernel tier free text; export tier enforces
+      reason: reason,
+      ts: new Date().toISOString(),
+    };
+    this._committing = true;
+    var self = this;
+    Promise.resolve(write(this.projectId, rec)).then(
+      function () { self.destroy(); self.onDone(rec); },      // single persist: forge-ui
+      function (e) {                                          // advances stage on onDone,
+        self._committing = false;                             // never before the record lands
+        box.textContent = "Record failed to persist — override aborted: " + esc(e && e.message);
+      }
+    );
+  };
+
+  WFGateOverride.prototype.destroy = function () {
+    if (this.el) this.el.innerHTML = "";
+  };
+
+  return WFGateOverride;
+});
+
+
+/* ===== module: wf-ufdm-visual.v1.js ===== */
+/*!
+ * wf-ufdm-visual.v1.js — WorldForge OS P2 visual pass (mockup → shell)
+ *
+ * Migrates the ufdm-mockup layout (panel / burnstrip / lockchip / chain
+ * vocabulary) into the shell as a live surface driven by real kernel data:
+ * budget from the frozen ledger shape {stage_id, actor, action, cost, ts},
+ * lock state from the asset library, promotion chain from decision_log.
+ *
+ * ANIMATION DECISION (P2-VIS-D1): Framer Motion was requested; it is a
+ * React library and the ratified P2 architecture decision is vanilla
+ * JS/UMD with no build chain. That decision is frozen; reopening it needs
+ * a decision record. This module delivers the same motion language —
+ * spring-ish entrances, animated bar fills, count-up numerals, chip pulse
+ * on lock-state change — with the Web Animations API + CSS. Zero deps.
+ *
+ * Contract: WFComponent (mount/update/destroy). Subscribes once; the
+ * kernel's chained subscription (ext v1.2 eventing fix) delivers both
+ * kernel and ext events through this one channel.
+ *
+ * Mount (Claude Code): reserve <section id="ufdm-surface"> in shell.html
+ * next to the forge detail panel; boot in src/app.js after ext binding:
+ *   new WFUFDMVisual(kernel, { mount: document.getElementById('ufdm-surface') }).mount();
+ * Load wf-ufdm-visual.v1.css in the shell <head> (build.mjs inlines it).
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.WFUFDMVisual = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  var EASE_SPRING = "cubic-bezier(0.22, 1.4, 0.36, 1)"; // overshoot ≈ spring
+  var DUR = { enter: 420, bar: 600, pulse: 700, num: 500 };
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fmt(n) { return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+
+  function animateEnter(el, i) {
+    if (el.animate) el.animate(
+      [{ opacity: 0, transform: "translateY(10px) scale(0.985)" },
+       { opacity: 1, transform: "translateY(0) scale(1)" }],
+      { duration: DUR.enter, delay: (i || 0) * 45, easing: EASE_SPRING, fill: "backwards" });
+  }
+  function animateBar(el, pct) {
+    var to = Math.max(0, Math.min(100, pct)) + "%";
+    if (el.animate) el.animate([{ width: el.style.width || "0%" }, { width: to }],
+      { duration: DUR.bar, easing: "cubic-bezier(0.16,1,0.3,1)" });
+    el.style.width = to;
+  }
+  function countUp(el, from, to) {
+    var t0 = null;
+    function step(t) {
+      if (t0 === null) t0 = t;
+      var p = Math.min(1, (t - t0) / DUR.num);
+      p = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(from + (to - from) * p);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function pulse(el) {
+    if (el.animate) el.animate(
+      [{ boxShadow: "0 0 0 0 rgba(240,180,60,0.7)" }, { boxShadow: "0 0 0 12px rgba(240,180,60,0)" }],
+      { duration: DUR.pulse, easing: "ease-out" });
+  }
+
+  /* --------------------------- kernel reads (seam-tolerant) ----------- */
+  function readLedger(k, pid) {
+    if (k.getLedger) return k.getLedger(pid) || [];
+    if (k.ext && k.ext.getLedger) return k.ext.getLedger(pid) || [];
+    return [];
+  }
+  function readAssets(k, pid) {
+    if (k.getAssets) return k.getAssets(pid) || [];
+    if (k.ext && k.ext.getAssets) return k.ext.getAssets(pid) || [];
+    return [];
+  }
+  function readDecisions(k, pid) {
+    if (k.getDecisions) return k.getDecisions(pid) || [];
+    if (k.ext && k.ext.getDecisionLog) return k.ext.getDecisionLog(pid) || [];
+    return [];
+  }
+  function readBudget(k, pid) {
+    if (k.getBudget) return k.getBudget(pid);
+    if (k.ext && k.ext.getBudget) return k.ext.getBudget(pid);
+    return null;
+  }
+
+  function WFUFDMVisual(kernel, opts) {
+    this.kernel = kernel;
+    this.el = opts.mount;
+    this.projectId = opts.projectId || (kernel.getBoundProject && kernel.getBoundProject());
+    this._unsub = null;
+    this._prev = { spend: 0, locks: {} };
+    this._mounted = false;
+  }
+
+  WFUFDMVisual.prototype.mount = function () {
+    var self = this;
+    if (typeof this.kernel.subscribe === "function")
+      this._unsub = this.kernel.subscribe(function () { self.update(); });
+    this.update();
+    this._mounted = true;
+    return this;
+  };
+
+  WFUFDMVisual.prototype.update = function () {
+    var k = this.kernel, pid = this.projectId;
+    if (!pid && k.getBoundProject) pid = this.projectId = k.getBoundProject();
+    var ledger = readLedger(k, pid);
+    var assets = readAssets(k, pid);
+    var decisions = readDecisions(k, pid).slice().reverse(); // newest first
+    var budget = readBudget(k, pid) || {};
+
+    // FROZEN ledger shape: sum `cost` — never `amount` (ext v1.2 bug class)
+    var spend = ledger.reduce(function (s, e) { return s + (Number(e.cost) || 0); }, 0);
+    var start = Number(budget.budget_start) || 0;
+    var remaining = start - spend;
+    var pct = start ? (spend / start) * 100 : 0;
+
+    var firstRender = !this._mounted;
+    this.el.innerHTML =
+      '<div class="panel ufdm" data-anim="0"><h3>Budget</h3>' +
+      '<div class="bignum" data-num>' + fmt(this._prev.spend) + "</div>" +
+      '<div class="bar"><div class="fill' + (remaining < start * 0.2 ? " warn" : "") + '"></div></div>' +
+      '<div class="foot">' + fmt(remaining) + " remaining of " + fmt(start) + "</div>" +
+      '<div class="burnstrip">' + ledger.slice(-6).reverse().map(function (e) {
+        return '<span class="amt" title="' + esc(e.actor) + " · " + esc(e.ts) + '">' +
+               esc(e.action) + " −" + fmt(e.cost) + "</span>";
+      }).join("") + "</div></div>" +
+
+      '<div class="panel" data-anim="1"><h3>Locked assets</h3><div class="cats">' +
+      (assets.length ? assets.map(function (a) {
+        var st = a.corrupt ? "corrupt" : a.locked ? "locked" : "unlocked";
+        return '<span class="lockchip ' + st + '" data-aid="' + esc(a.id) + '">' +
+               esc(a.name || a.id) + '<span class="fp">' + esc((a.fingerprint || "").slice(0, 14)) + "</span></span>";
+      }).join("") : '<span class="foot">No assets registered.</span>') + "</div></div>" +
+
+      '<div class="panel" data-anim="2"><h3>Decision chain</h3><div class="chain">' +
+      (decisions.length ? decisions.slice(0, 8).map(function (d) {
+        return '<div class="arow d-kind-' + esc(d.kind || "decision") + '">' +
+               '<span class="id">' + esc(d.kind || "decision") + "</span> " +
+               esc(d.reason || d.action || "") +
+               '<span class="foot"> — ' + esc(d.actor) + "</span></div>";
+      }).join("") : '<span class="foot">No decisions recorded yet.</span>') + "</div></div>";
+
+    // motion pass
+    var i = 0, self = this;
+    if (firstRender)
+      this.el.querySelectorAll("[data-anim]").forEach(function (p) { animateEnter(p, i++); });
+    animateBar(this.el.querySelector(".fill"), pct);
+    countUp(this.el.querySelector("[data-num]"), this._prev.spend, spend);
+    assets.forEach(function (a) {
+      var was = self._prev.locks[a.id], now = !!a.locked;
+      if (was !== undefined && was !== now) {
+        var chip = self.el.querySelector('[data-aid="' + CSS.escape(a.id) + '"]');
+        if (chip) pulse(chip);
+      }
+      self._prev.locks[a.id] = now;
+    });
+    this._prev.spend = spend;
+  };
+
+  WFUFDMVisual.prototype.destroy = function () {
+    if (this._unsub) this._unsub();
+    if (this.el) this.el.innerHTML = "";
+    this._mounted = false;
+  };
+
+  return WFUFDMVisual;
+});
+
+
+/* ===== module: app.js ===== */
+/*!
+ * app.js — WorldForge OS P4 entry point (UMD)
+ * The ONLY place that decides between 3D and fallback modes; components
+ * never probe capabilities. One degradation path, two triggers:
+ * WebGL missing OR CDN failed -> text roster.
+ *
+ * Boot order: storage adapter -> kernel (via KernelAdapter, the sole
+ * kernel-global seam) -> mode decision -> component mounts.
+ */
+(function (root, factory) {
+  "use strict";
+  root.WF = root.WF || {};
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(root.WF);
+  } else {
+    root.WF.app = factory(root.WF);
+  }
+})(typeof self !== "undefined" ? self : globalThis, function (WF) {
+  "use strict";
+
+  var GATE_AFTER = {
+    4: { title: "Previz gate — Rule 3",
+         text: "Scene Simulation is done. Before committing generation budget: has a cheap draft/previz been produced and explicitly approved?" },
+    5: { title: "Budget & routing gate — Rules 3 & 11",
+         text: "Confirm the running budget covers this batch, and that the routed model(s) were verified current — not deprecated — before pacing is compiled." },
+    8: { title: "Validation gate — Rule 4",
+         text: "Confirm every shot passed tiered validation and the fingerprint diff against locked canon. A failure gets targeted re-generation, not a blanket pass." }
+  };
+
+  // window.storage (artifact persistence API) behind an injected-adapter
+  // seam; in-memory shim keeps file:// double-click functional when the
+  // API is absent (data is then session-only — surfaced in console).
+  function makeStorageAdapter() {
+    if (typeof window !== "undefined" && window.storage) return window.storage;
+    console.warn("[wf] window.storage unavailable — using in-memory session store (nothing persists)");
+    var mem = {};
+    return {
+      get: async function (k) { return (k in mem) ? { key: k, value: mem[k] } : null; },
+      set: async function (k, v) { mem[k] = v; return { key: k, value: v }; },
+      delete: async function (k) { delete mem[k]; return { key: k, deleted: true }; },
+      list: async function (prefix) {
+        return { keys: Object.keys(mem).filter(function (k) { return k.indexOf(prefix || "") === 0; }) };
+      }
+    };
+  }
+
+  var state = { viz: null, forge: null, ufdm: null, actorName: "" };
+
+  async function boot() {
+    var VendorLoader = WF.VendorLoader, Data = WF.Data;
+
+    var storageAdapter = makeStorageAdapter(); // ONE instance — kernel and ext must share it
+    var adapter = WF.KernelAdapter.create({
+      storage: storageAdapter,
+      pipeline: {
+        stages: Data.STAGES,
+        gates: GATE_AFTER,
+        storage: { projectPrefix: "wfproj:", legacyKey: "worldforge-projects-v1", profileKey: "worldforge-profile-v1" }
+      },
+      actor: function () { return state.actorName || "A Forger"; }
+    });
+
+    state.actorName = await adapter.loadProfile();
+
+    /* ---- P2 extension install (slot per dec_p4_p2_slot_deferred, now filled) ---- */
+    var g = typeof self !== "undefined" ? self : globalThis;
+    var p2kernel = null;
+    if (g.WFKernelP2Ext) {
+      // MARKER PIPE-1: canonical pipeline.v1.json not yet in project knowledge.
+      // Interim canonical object derived from bundled STAGES; swaps to the
+      // real file with zero code changes when it lands (injection seam).
+      var pipelineCanon = {
+        provenance: "interim-pending-PIPE-1",
+        stages: Data.STAGES.map(function (label, i) { return { id: "st" + i, label: label }; }),
+        storage: { projectPrefix: "wfproj:", legacyKey: "worldforge-projects-v1" },
+        budget: { currency: "USD" }
+      };
+      var rosterCanon = {
+        rosterVersion: "5.2.0",
+        agents: Data.GUILDS.reduce(function (acc, gd) {
+          gd.agents.forEach(function (a) { acc.push({ name: a.name, guild: gd.name }); });
+          return acc;
+        }, [])
+      };
+      p2kernel = adapter.installP2(g.WFKernelP2Ext, {
+        pipeline: pipelineCanon, roster: rosterCanon, storage: storageAdapter
+      });
+    }
+
+    /* ---- mode decision (sole decider) ---- */
+    var canWebGL = VendorLoader.webglAvailable();
+    var three = canWebGL ? await VendorLoader.loadThree() : null;
+
+    if (three) {
+      state.viz = WF.EscalationViz.mount(document.getElementById("stage"), three, {
+        GUILDS: Data.GUILDS, STAGES: Data.STAGES
+      });
+    } else {
+      enterFallbackMode(canWebGL ? "cdn" : "webgl");
+    }
+
+    /* ---- forge UI mounts regardless of mode (DOM-only) ---- */
+    state.forge = WF.Forge.mount(adapter, {
+      onStageChange: function (idx) { if (state.viz) state.viz.updateStationColors(idx); },
+      onActorChange: function (name) { state.actorName = name; },
+      onProjectSelect: function (id) {
+        adapter.bindProject(id);
+        /* P2 visual surface: mounted only while a project is bound —
+         * the ext read seams throw loudly on an unbound kernel, by design. */
+        if (!p2kernel || !g.WFUFDMVisual) return;
+        if (id) {
+          if (!state.ufdm) {
+            var surf = document.getElementById("ufdm-surface");
+            if (surf) state.ufdm = new g.WFUFDMVisual(p2kernel, { mount: surf, projectId: id }).mount();
+          } else {
+            state.ufdm.projectId = id;
+            state.ufdm.update();
+          }
+        } else if (state.ufdm) {
+          state.ufdm.destroy();
+          state.ufdm = null;
+        }
+      },
+      /* P4-UI1: only offered when the ext seam and the component shipped.
+       * The forge never sees the kernel — it gets back a record or null. */
+      onGateOverride: (p2kernel && g.WFGateOverride) ? function (projectId, stageId) {
+        return new Promise(function (resolve) {
+          var backdrop = document.getElementById("override-backdrop");
+          var mountEl = document.getElementById("gate-override-mount");
+          if (!backdrop || !mountEl) { resolve(null); return; }
+          backdrop.classList.add("visible");
+          var seam = {
+            // ACT-1: the modal's actor field wins — the kernel actor seam
+            // reads state.actorName at record time, so set it pre-write.
+            recordGateOverride: function (pid, rec) {
+              if (rec && rec.actor) {
+                state.actorName = rec.actor;
+                if (state.forge) state.forge.setActor(rec.actor);
+              }
+              return p2kernel.recordGateOverride(pid, rec);
+            }
+          };
+          new g.WFGateOverride(seam, {
+            mount: mountEl, projectId: projectId, stageId: stageId,
+            actor: state.actorName || "human",
+            onDone: function (rec) {
+              backdrop.classList.remove("visible");
+              resolve(rec);
+            }
+          }).mount();
+        });
+      } : null
+    });
+
+    /* ---- P2 surface: UFDM export on the forge detail panel ---- */
+    if (p2kernel && WF && g.WFUFDM) {
+      var detail = document.getElementById("forge-detail");
+      if (detail && !document.getElementById("ufdm-export-btn")) {
+        var btn = document.createElement("button");
+        btn.id = "ufdm-export-btn";
+        btn.textContent = "Export UFDM";
+        btn.style.cssText = "margin-top:10px;width:100%;";
+        btn.onclick = function () {
+          try {
+            var exp = new g.WFUFDM.UFDMExport(p2kernel, { mount: detail });
+            exp.download();
+          } catch (e) { console.error("[wf] UFDM export failed", e); }
+        };
+        detail.appendChild(btn);
+      }
+    }
+    state.forge.setActor(state.actorName);
+
+    /* ---- mode buttons (DOM toggles here; scene toggles in viz) ---- */
+    function setMode(mode) {
+      if (state.viz) state.viz.setMode(mode);
+      document.getElementById("mode-explore").classList.toggle("active", mode === "explore");
+      document.getElementById("mode-forge").classList.toggle("active", mode === "forge");
+      document.getElementById("forge-floor").classList.toggle("visible", mode === "forge");
+      document.getElementById("forge-detail").classList.toggle("visible", mode === "forge" && state.forge.hasActive());
+      document.getElementById("hint").textContent = mode === "explore"
+        ? "drag to rotate · scroll to zoom · click a node to inspect"
+        : "drag to rotate · scroll to zoom · pick a project from the floor";
+    }
+    document.getElementById("mode-explore").onclick = function () { setMode("explore"); };
+    document.getElementById("mode-forge").onclick = function () { setMode("forge"); state.forge.refresh(); };
+  }
+
+  function enterFallbackMode(reason) {
+    var stage = document.getElementById("stage");
+    if (stage) stage.setAttribute("hidden", "");
+    var mountEl = document.getElementById("roster-mount");
+    if (!mountEl) {
+      mountEl = document.createElement("div");
+      mountEl.id = "roster-mount";
+      document.body.appendChild(mountEl);
+    }
+    mountEl.removeAttribute("hidden");
+    var TR = WF.TextRoster;
+    new TR.TextRoster(mountEl, TR.toMinimalRoster(WF.Data.GUILDS)).mount();
+    console.info("[wf] fallback mode (" + reason + "): text roster active");
+  }
+
+  // Belt-and-braces: vendor-loader fires this if the CDN dies after boot decided.
+  if (typeof document !== "undefined") {
+    document.addEventListener("wf:vendor-fallback", function () {
+      var m = document.getElementById("roster-mount");
+      if (!m || !m.hasChildNodes()) enterFallbackMode("cdn-late");
+    });
+  }
+
+  return { boot: boot, _internals: { makeStorageAdapter: makeStorageAdapter, GATE_AFTER: GATE_AFTER } };
+});
+
+</script>
+<!-- WF:BUNDLE:END -->
+<script>
+/* bootstrap — load order: kernel (above) -> bundle -> boot. Nothing else. */
+WF.app.boot();
+</script>
+</body>
+</html>

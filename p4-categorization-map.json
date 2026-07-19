@@ -1,0 +1,37 @@
+{
+  "source": "worldforge-os_4.html (monolith, sha256 13a480ce…d59b)",
+  "date": "2026-07-17",
+  "blocks": {
+    "00.js": {
+      "htmlLines": "268-276",
+      "bytes": 603447,
+      "label": "VENDOR",
+      "content": "Three.js r13x (2021) vendored minified",
+      "destination": "DELETED — replaced by vendor-loader.js CDN lazy path (P4-D2)",
+      "confidence": "verified"
+    },
+    "01.js": {
+      "htmlLines": "277-863",
+      "bytes": 33972,
+      "label": "MIXED — split per sub-map",
+      "subMap": [
+        { "blockLines": "1-72",    "label": "DATA",          "content": "GUILDS (gen_guilds.py generated) + STAGES", "destination": "src/guilds-data.js", "confidence": "verified" },
+        { "blockLines": "73-231",  "label": "UI_LOGIC",      "content": "THREE base scene, explore/forge groups, drag-orbit, raycaster, agent panel DOM", "destination": "src/components/escalation-viz.js", "confidence": "verified" },
+        { "blockLines": "232-257", "label": "UI_LOGIC",      "content": "mode state + animate loop (reads viz objects)", "destination": "src/components/escalation-viz.js", "confidence": "verified" },
+        { "blockLines": "258-278", "label": "UI_LOGIC",      "content": "setMode + mode buttons (mode DECISION moves to app.js; DOM toggles stay component-side)", "destination": "src/app.js + components", "confidence": "verified" },
+        { "blockLines": "280-296", "label": "KERNEL_ACCESS", "content": "storage keys, project state, toast (toast is UI)", "destination": "kernel (keys/state) + components/forge.js (toast)", "confidence": "verified" },
+        { "blockLines": "297-356", "label": "KERNEL_ACCESS", "content": "profile load/save, loadProjects, migrateLegacy, saveProject, freshen", "destination": "worldforge-kernel.v1.1.js", "confidence": "verified" },
+        { "blockLines": "357-407", "label": "UI_LOGIC",      "content": "renderProjectList, GATE_AFTER copy text, renderDetail, renderDecisions, escapeHtml", "destination": "components/forge.js (GATE_AFTER defs -> pipeline object in app.js)", "confidence": "verified" },
+        { "blockLines": "408-413", "label": "KERNEL_ACCESS", "content": "record() — decision record append, 100-cap", "destination": "worldforge-kernel.v1.1.js", "confidence": "verified" },
+        { "blockLines": "414-440", "label": "UI_LOGIC",      "content": "gate modal (askGate/closeGate + DOM handlers)", "destination": "components/forge.js", "confidence": "verified" },
+        { "blockLines": "441-505", "label": "KERNEL_ACCESS", "content": "advance / stepback / save-notes / delete handlers — DOM shell is UI, mutation+persist sequence is kernel", "destination": "kernel (mutations) + components/forge.js (handlers)", "confidence": "verified" },
+        { "blockLines": "506-585", "label": "UI_LOGIC",      "content": "new-project modal + init loadProfile()", "destination": "components/forge.js (modal) / kernel (create) / app.js (init)", "confidence": "verified" }
+      ]
+    }
+  },
+  "dead": "none found in monolith blocks; foundry-visualizer_5.html checked separately via --deadcheck",
+  "notes": [
+    "No window.WFKernel existed in the monolith — kernel logic was inline. Extraction CREATES the kernel seam (worldforge-kernel.v1.1.js) bound to the recovered public contract in fragment-inventory_v1.md.",
+    "updateStationColors is defined in the viz scene region and called from renderDetail — cross-module call; wired via app.js callback, never a direct import (graph edges point downward only)."
+  ]
+}

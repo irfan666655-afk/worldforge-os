@@ -1,0 +1,33 @@
+/* wf-ufdm-visual.v1.css — P2 visual pass. Inline via build.mjs into shell <head>.
+   Vocabulary carried from worldforge-ufdm-mockup_2.html; tokens match shell dark theme. */
+#ufdm-surface { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+#ufdm-surface .panel { background: #14161c; border: 1px solid #262a34; border-radius: 12px; padding: 16px; }
+#ufdm-surface .panel h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8b93a7; }
+#ufdm-surface .bignum { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; color: #e8ebf2; }
+#ufdm-surface .bar { height: 8px; border-radius: 4px; background: #22262f; overflow: hidden; margin: 10px 0 6px; }
+#ufdm-surface .fill { height: 100%; width: 0%; background: linear-gradient(90deg, #4f8cff, #7a5cff); border-radius: 4px; }
+#ufdm-surface .fill.warn { background: linear-gradient(90deg, #f0b43c, #e2543c); }
+#ufdm-surface .foot { font-size: 12px; color: #8b93a7; }
+#ufdm-surface .burnstrip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+#ufdm-surface .amt { font-size: 11px; font-variant-numeric: tabular-nums; background: #1b1f28; border: 1px solid #2a2f3b; border-radius: 999px; padding: 3px 9px; color: #b7bfd1; }
+#ufdm-surface .cats { display: flex; flex-wrap: wrap; gap: 8px; }
+#ufdm-surface .lockchip { display: inline-flex; flex-direction: column; gap: 2px; font-size: 12px; border-radius: 8px; padding: 6px 10px; border: 1px solid; }
+#ufdm-surface .lockchip .fp { font-size: 10px; opacity: .65; font-family: ui-monospace, monospace; }
+#ufdm-surface .lockchip.locked { border-color: #2e7d4f; background: #12211a; color: #7fd6a4; }
+#ufdm-surface .lockchip.unlocked { border-color: #3a4152; background: #171a22; color: #9aa3b8; }
+#ufdm-surface .lockchip.corrupt { border-color: #a53d3d; background: #241315; color: #ff9b9b; }
+#ufdm-surface .chain .arow { font-size: 13px; color: #c6cddd; padding: 7px 0; border-bottom: 1px solid #1f232d; }
+#ufdm-surface .chain .arow:last-child { border-bottom: 0; }
+#ufdm-surface .chain .id { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; border-radius: 4px; padding: 2px 6px; margin-right: 6px; background: #1b1f28; color: #8b93a7; }
+#ufdm-surface .chain .d-kind-gate-override .id { background: #2b2113; color: #f0b43c; }
+#ufdm-surface .chain .d-kind-step-back .id { background: #241315; color: #ff9b9b; }
+#ufdm-surface .chain .d-kind-gate-pass .id { background: #12211a; color: #7fd6a4; }
+/* gate-override modal (wf-gate-override.v1.js) */
+.panel.gate-override { max-width: 420px; }
+.panel.gate-override .warn { color: #f0b43c; font-size: 13px; }
+.panel.gate-override label { display: block; font-size: 12px; color: #8b93a7; margin: 10px 0 4px; }
+.panel.gate-override input, .panel.gate-override textarea { width: 100%; background: #0f1116; border: 1px solid #2a2f3b; border-radius: 8px; color: #e8ebf2; padding: 8px; font: inherit; }
+.panel.gate-override .findings { min-height: 18px; font-size: 12px; color: #f0b43c; margin-top: 8px; }
+.panel.gate-override .actions { display: flex; gap: 8px; margin-top: 12px; }
+.panel.gate-override button.danger { background: #a53d3d; border: 0; color: #fff; border-radius: 8px; padding: 8px 14px; }
+@media (prefers-reduced-motion: reduce) { #ufdm-surface * { animation: none !important; transition: none !important; } }
