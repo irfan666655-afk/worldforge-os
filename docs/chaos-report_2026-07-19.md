@@ -33,7 +33,7 @@ Probes that survived unpatched: overdraw refusal, chained kernel+ext eventing (o
 
 ## Verification matrix (final)
 
-- `build.mjs --bundle` → sha256 `294a457336e384f2…` · `--verify` fresh · `--gate` clean
+- `build.mjs --bundle` → sha256 `82a0b064421cb…` · `--verify` fresh · `--gate` clean
 - `test/kernel-smoke.mjs` **30/30** · `test/p2-ext-smoke.mjs` **31/31** (21 baseline + 6 seam + 4 chaos regressions) · `test/chaos-fuzz.mjs` **no findings**
 - `gen_rules.py --check` fresh · `lint_worldforge.py` 0 errors / 0 warnings · per-block `node --check` 3/3
 - Browser (served artifact): boot clean, first-use create OK, gate fires, reason-less override **refused** (GOV-1/Rule 7), ceremony records `gate-override · Irfan` and advances exactly one stage, UFDM surface renders Budget/Locked assets/Decision chain live, zero console errors.

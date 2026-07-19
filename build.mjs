@@ -20,6 +20,7 @@ const CONFIG = {
   // Explicit order = deterministic build. Never glob.
   manifest: [
     "vendor-loader.js",
+    "wf-recovery.v1.js",
     "kernel-adapter.js",
     "wfkernel-p2-ext.v1.2.js",
     "wf-ufdm-components.v1.js",

@@ -25,6 +25,13 @@ const decisionLog = existsSync(path.join(ROOT, "docs/decision_log.md"))
 const chaosReport = existsSync(path.join(ROOT, "docs/chaos-report_2026-07-19.md"))
   ? read("docs/chaos-report_2026-07-19.md") : die("docs/chaos-report_2026-07-19.md missing");
 
+const identityDoc = existsSync(path.join(ROOT, "docs/SYSTEM_IDENTITY.md")) ? read("docs/SYSTEM_IDENTITY.md") : "";
+const thesis = (identityDoc.match(/\*\*(WorldForge OS is [^*]+)\*\*/) || [, ""])[1].replace(/\s+/g, " ").trim();
+const gapRows = [...identityDoc.matchAll(/^\| (G\d) \| \*\*([^*]+)\*\*[^|]*\| ([^|]+) \| ([^|]+) \|/gm)]
+  .map((m) => ({ id: m[1], gap: m[2].trim(), status: m[4].trim() }));
+const jarvisPath = path.join(ROOT, "work", "jarvis-run.json");
+const jarvis = existsSync(jarvisPath) ? JSON.parse(readFileSync(jarvisPath, "utf8")) : null;
+
 const artifactBytes = statSync(path.join(ROOT, "worldforge-os_5.html")).size;
 const monolithMatch = chaosReport.match(/(\d{3},\d{3})\s*B\b/g) || [];
 const monolithBytes = 653674; // frozen baseline, recorded in P4 report
@@ -129,11 +136,50 @@ ${findingLines}
 Try to override one — bring a reason.
 `;
 
+const jarvisBlock = jarvis
+  ? `## Verification telemetry (jarvis-core, ${jarvis.ts})
+Status **${jarvis.status}** — ${jarvis.tickets.length} tickets across 3 role lanes, ` +
+    `${jarvis.tickets.filter((t) => t.ok).length} green, total ` +
+    `${jarvis.tickets.reduce((s, t) => s + t.ms, 0)}ms.
+${jarvis.tickets.map((t) => `- \`${t.id}\` [${t.agent}] ${t.desc} — ${t.ok ? "✓" : "✗"} ${t.ms}ms`).join("\n")}
+`
+  : "";
+
+const deepDive = `# WorldForge OS — Architectural Deep-Dive · ${today}
+
+## Identity
+${thesis || "(SYSTEM_IDENTITY.md thesis not found)"}
+
+## Trust boundaries
+Kernel (mutation truth, single persist) → Ext (additive constitution:
+governance vocabulary, mutation FIFO) → Components (powerless by
+construction, adapter-only kernel access, mechanically gated) → Build
+(deterministic notary: embedded hash, single-source kernel splice).
+
+## Gap ledger (from the ontological audit)
+${gapRows.length ? gapRows.map((r) => `- **${r.id}** ${r.gap} — ${r.status}`).join("\n") : "(no gap table parsed)"}
+
+## Recovery tier (G1, shipped)
+Every valid persist stamps a hash-verified shadow copy at the storage seam.
+Corruption-at-rest triggers automatic rollback to the last pristine state —
+loudly, with provenance re-verified first. A forged shadow is refused:
+recovery never invents state. Corrupt writes never land at all.
+
+${jarvisBlock}
+## Reproduce every claim
+\`\`\`
+node scripts/jarvis-core.mjs     # full matrix, colored dashboard
+node build.mjs --verify          # artifact hash
+node test/chaos-fuzz.mjs         # hostile pass
+\`\`\`
+`;
+
 const outDir = path.join(ROOT, "dist", "branding");
 mkdirSync(outDir, { recursive: true });
 writeFileSync(path.join(outDir, "launch-log.md"), launchLog);
 writeFileSync(path.join(outDir, "x-thread.md"), xThread);
 writeFileSync(path.join(outDir, "README-launch.md"), readmeLaunch);
-console.log("OK: dist/branding/{launch-log.md, x-thread.md, README-launch.md}");
+writeFileSync(path.join(outDir, "architecture-deep-dive.md"), deepDive);
+console.log("OK: dist/branding/{launch-log.md, x-thread.md, README-launch.md, architecture-deep-dive.md}");
 console.log("    artifact=" + artifactBytes.toLocaleString() + " B · reduction=" + reduction + "% · decisions=" +
   ratified.length + " · findings=" + findingsTable.length);

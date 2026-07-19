@@ -170,7 +170,7 @@ async function freshKernel(opts = {}) {
     catch (e) { console.log(`[note] block ${i + 1} define-time stop (DOM boot expected): ${String(e).slice(0, 90)}`); }
   }
   const added = Object.keys(sandbox).filter((k) => !baseline.has(k));
-  const expected = new Set(["WFKernel", "WF", "WFKernelP2Ext", "WFUFDM", "WFGateOverride", "WFUFDMVisual"]);
+  const expected = new Set(["WFKernel", "WF", "WFKernelP2Ext", "WFUFDM", "WFGateOverride", "WFUFDMVisual", "WFRecovery"]);
   const leaks = added.filter((k) => !expected.has(k));
   if (leaks.length) finding("HIGH", "unexpected globals leaked by built artifact", leaks.join(", "));
   else console.log("[ok] globals confined to:", added.join(", ") || "(none registered pre-DOM)");
@@ -230,6 +230,49 @@ async function freshKernel(opts = {}) {
   const leak = JSON.stringify(doc.decision_log || []).includes("meter:");
   if (leak) finding("MEDIUM", "metering rows leak into decision ledgers", "meter: entries in decision_log");
   else console.log("[ok] metering ledger separate — no bleed into decision ledgers");
+}
+
+/* ---- 8. recovery layer: corruption-at-rest + provenance attacks ---- */
+{
+  const Rec = require(ROOT + "src/wf-recovery.v1.js");
+  const mem = {};
+  const raw = {
+    get: async (k) => (k in mem ? { key: k, value: mem[k] } : null),
+    set: async (k, v) => { mem[k] = v; return { key: k, value: v }; },
+    delete: async (k) => { delete mem[k]; return { key: k, deleted: true }; },
+    list: async (p) => ({ keys: Object.keys(mem).filter((k) => k.startsWith(p || "")) }),
+  };
+  const silent = { error() {} };
+  const realErr = console.error; console.error = silent.error;
+  const s = Rec.wrap(raw, { prefixes: ["wfproj:"] });
+  await s.set("wfproj:x", JSON.stringify({ id: "x", stage: 3, budget_ledger: [{ action: "a", cost: 5 }] }), true);
+
+  // 8a. every corruption style must roll back to the pristine hash
+  const corruptions = ["", "{", "null", "[1,2", "  ", "{\"id\":"];
+  let healedAll = true;
+  for (const c of corruptions) {
+    mem["wfproj:x"] = c;
+    const r = await s.get("wfproj:x", true);
+    if (!r || !r.recovered || JSON.parse(r.value).stage !== 3) healedAll = false;
+  }
+  if (!healedAll) finding("CRITICAL", "corruption-at-rest not rolled back", "some corruption styles lost state");
+  else console.log("[ok] " + corruptions.length + " corruption styles all rolled back to pristine hash");
+
+  // 8b. forged shadow must be refused (provenance)
+  mem["wfproj:x"] = "{corrupt";
+  const sh = JSON.parse(mem["wfshadow:wfproj:x"]);
+  sh.v = JSON.stringify({ id: "x", stage: 0, budget_ledger: [{ action: "steal", cost: 1e6 }] });
+  mem["wfshadow:wfproj:x"] = JSON.stringify(sh);
+  const forged = await s.get("wfproj:x", true);
+  if (forged !== null) finding("CRITICAL", "forged shadow restored", "hash check bypassed");
+  else console.log("[ok] forged shadow refused — recovery never invents state");
+
+  // 8c. corrupt write must never land (fail-closed at the seam)
+  let refusedWrite = false;
+  try { await s.set("wfproj:y", "not-json", true); } catch { refusedWrite = true; }
+  if (!refusedWrite || "wfproj:y" in mem) finding("CRITICAL", "corrupt write landed through recovery seam", "");
+  else console.log("[ok] corrupt write refused at the seam — never persisted");
+  console.error = realErr;
 }
 
 console.log("\n================ CHAOS REPORT ================");

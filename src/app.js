@@ -49,7 +49,11 @@
   async function boot() {
     var VendorLoader = WF.VendorLoader, Data = WF.Data;
 
+    var g = typeof self !== "undefined" ? self : globalThis;
     var storageAdapter = makeStorageAdapter(); // ONE instance — kernel and ext must share it
+    // D-2026-07-19-04: recovery wraps the storage seam — every tier above
+    // (kernel/ext/monetization) sees a self-healing adapter, unchanged APIs.
+    if (g.WFRecovery) storageAdapter = g.WFRecovery.wrap(storageAdapter, { prefixes: ["wfproj:"] });
     var adapter = WF.KernelAdapter.create({
       storage: storageAdapter,
       pipeline: {
@@ -63,7 +67,6 @@
     state.actorName = await adapter.loadProfile();
 
     /* ---- P2 extension install (slot per dec_p4_p2_slot_deferred, now filled) ---- */
-    var g = typeof self !== "undefined" ? self : globalThis;
     var p2kernel = null;
     if (g.WFKernelP2Ext) {
       // MARKER PIPE-1: canonical pipeline.v1.json not yet in project knowledge.

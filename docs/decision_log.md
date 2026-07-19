@@ -44,6 +44,17 @@ and an injected gateway seam. Constraints frozen with it:
   invoice total refuses to charge; a null/ambiguous gateway response is a
   failure, never an assumed success.
 
+## D-2026-07-19-04 — RATIFIED · recovery tier at the storage seam
+`src/wf-recovery.v1.js` wraps the injected storage adapter (kernel/ext/
+monetization untouched): every valid persist stamps a hash-verified shadow;
+a corrupt primary read auto-rolls back to the last pristine state, loudly,
+with the shadow's hash re-verified first — a forged shadow is refused, and
+a corrupt write never lands. FNV-1a integrity provenance only; cryptographic
+chaining is marker `PROV-1`. Gap analysis: `docs/SYSTEM_IDENTITY.md`.
+Status: frozen.
+
 ## Open markers
 `PIPE-1` · `ACT-1` · `UFDM2-Q1–Q3` · `MON-1` (real gateway decision) ·
+`PROV-1` (cryptographic event chain) · `TEN-1` (multi-tenant prefixes) ·
+`CAS-1` (storage-tier compare-and-swap) · `SELF-1` (artifact boot self-check) ·
 §5–6 browser/a11y release passes (Irfan-side).
