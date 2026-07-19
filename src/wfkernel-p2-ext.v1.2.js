@@ -197,6 +197,9 @@
       _mutTail = run.then(function () {}, function () {});
       return run;
     }
+    // Seam for sibling extensions (D-2026-07-19-02): their persists join the
+    // same FIFO instead of re-creating the lost-write race the queue kills.
+    kernel._p2Enqueue = enqueue;
 
     /* RESOLVED(kernel-src): kernel v1.1 exposes NEITHER updateBudget NOR
      * recordDecision — additive fallbacks below. P2 governance records

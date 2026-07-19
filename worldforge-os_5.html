@@ -609,7 +609,7 @@
 <!-- WF:KERNEL:END -->
 <!-- WF:BUNDLE:BEGIN -->
 <script>
-/* WF-BUNDLE-HASH sha256:47d35478c0d34163d210337d416c3e62de82a71fe65df2f93cbfe20e7e43ae82 */
+/* WF-BUNDLE-HASH sha256:294a457336e384f241a36acd24a2aebf6a233f4f8035a0d0d55469753db1a0c6 */
 "use strict";
 /* ===== module: vendor-loader.js ===== */
 /*!
@@ -941,6 +941,9 @@
       _mutTail = run.then(function () {}, function () {});
       return run;
     }
+    // Seam for sibling extensions (D-2026-07-19-02): their persists join the
+    // same FIFO instead of re-creating the lost-write race the queue kills.
+    kernel._p2Enqueue = enqueue;
 
     /* RESOLVED(kernel-src): kernel v1.1 exposes NEITHER updateBudget NOR
      * recordDecision — additive fallbacks below. P2 governance records

@@ -33,14 +33,14 @@ Probes that survived unpatched: overdraw refusal, chained kernel+ext eventing (o
 
 ## Verification matrix (final)
 
-- `build.mjs --bundle` → sha256 `47d35478c0d34163…` · `--verify` fresh · `--gate` clean
+- `build.mjs --bundle` → sha256 `294a457336e384f2…` · `--verify` fresh · `--gate` clean
 - `test/kernel-smoke.mjs` **30/30** · `test/p2-ext-smoke.mjs` **31/31** (21 baseline + 6 seam + 4 chaos regressions) · `test/chaos-fuzz.mjs` **no findings**
 - `gen_rules.py --check` fresh · `lint_worldforge.py` 0 errors / 0 warnings · per-block `node --check` 3/3
 - Browser (served artifact): boot clean, first-use create OK, gate fires, reason-less override **refused** (GOV-1/Rule 7), ceremony records `gate-override · Irfan` and advances exactly one stage, UFDM surface renders Budget/Locked assets/Decision chain live, zero console errors.
 
 ## Artifact size
 
-143,296 B (vs 113,880 B pre-splice). The delta is the P2 surface actually landing: gate-override + ufdm-visual modules, inlined CSS, chaos-immunity code and their comments. Monolith baseline remains 653,674 B → **−78.1%**. No minification pass: source readability is the ratified engineering language (D-2026-07-18-04 spirit); byte-shredding via comment-stripping would fight the audit discipline that caught these bugs.
+143,484 B (vs 113,880 B pre-splice; includes the `_p2Enqueue` seam, D-2026-07-19-02). The delta is the P2 surface actually landing: gate-override + ufdm-visual modules, inlined CSS, chaos-immunity code and their comments. Monolith baseline remains 653,674 B → **−78.1%**. No minification pass: source readability is the ratified engineering language (D-2026-07-18-04 spirit); byte-shredding via comment-stripping would fight the audit discipline that caught these bugs.
 
 ## Open markers (unchanged)
 

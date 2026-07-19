@@ -176,6 +176,62 @@ async function freshKernel(opts = {}) {
   else console.log("[ok] globals confined to:", added.join(", ") || "(none registered pre-DOM)");
 }
 
+/* ---- 7. monetization layer: billing bypass + leakage attacks ---- */
+{
+  const Mon = require(ROOT + "src/wf.monetization.v1.js");
+  const { kernel, storage, p } = await freshKernel();
+
+  // 7a. post-install rate mutation (the caller keeps the rates reference)
+  const attackerRates = { video_gen: 4 };
+  const mon = Mon.install(kernel, { rates: attackerRates });
+  attackerRates.video_gen = 0; // re-rate to free after install
+  const e = await mon.meter("video_gen", "attacker");
+  if (e.cost !== 4)
+    finding("CRITICAL", "post-install rate mutation re-rates billing", "metered cost=" + e.cost + " expected 4");
+  else console.log("[ok] rates copied+frozen at install — post-install mutation impotent");
+
+  // 7b. amount-field smuggling into the metering ledger
+  kernel.getProjectState().metering_ledger.push({ action: "meter:smuggle", actor: "x", amount: 9, cost: 0, ts: 1 });
+  let aborted = false;
+  try { mon.invoice(); } catch { aborted = true; }
+  if (!aborted) finding("CRITICAL", "amount-smuggled row did not abort invoicing", "fail-open billing");
+  else console.log("[ok] amount-smuggled ledger row aborts invoicing (fail-closed)");
+  kernel.getProjectState().metering_ledger.pop();
+
+  // 7c. invoice tamper: total, id, and line-item manipulation all refused
+  const inv = mon.invoice();
+  const tampers = [
+    { ...inv, total: 0.01 },
+    { ...inv, invoice_id: "inv_deadbeef" },
+    { ...inv, line_items: [{ action: "meter:video_gen", cost: 0.01 }] },
+    null,
+  ];
+  let passedTamper = 0;
+  for (const bad of tampers) {
+    try { await mon.charge(bad); passedTamper++; } catch { /* refused — correct */ }
+  }
+  if (passedTamper) finding("CRITICAL", "tampered invoice accepted by charge()", passedTamper + " of " + tampers.length + " tampers charged");
+  else console.log("[ok] all " + tampers.length + " invoice tampers refused before the gateway");
+
+  // 7d. racing meter() vs advance() — FIFO must hold for the billing ledger too
+  await Promise.all([
+    kernel.advance(p.id, null),
+    mon.meter("video_gen", "producer"),
+    mon.meter("video_gen", "producer"),
+  ]);
+  const persisted = JSON.parse(storage._mem["wfproj:" + p.id]);
+  const meterCount = (persisted.metering_ledger || []).filter((x) => x.action === "meter:video_gen").length;
+  if (meterCount !== 3)
+    finding("HIGH", "racing meter/advance lost metering entries", "persisted=" + meterCount + " expected 3");
+  else console.log("[ok] race: all metering entries survived advance(); stage=" + persisted.stage);
+
+  // 7e. leakage: billing internals must not bleed into UFDM decision ledgers
+  const doc = kernel.exportUFDM();
+  const leak = JSON.stringify(doc.decision_log || []).includes("meter:");
+  if (leak) finding("MEDIUM", "metering rows leak into decision ledgers", "meter: entries in decision_log");
+  else console.log("[ok] metering ledger separate — no bleed into decision ledgers");
+}
+
 console.log("\n================ CHAOS REPORT ================");
 if (!findings.length) console.log("no findings — all probes survived");
 for (const f of findings) console.log(`[${f.sev}] ${f.name}\n    ${f.detail}`);
