@@ -170,7 +170,7 @@ async function freshKernel(opts = {}) {
     catch (e) { console.log(`[note] block ${i + 1} define-time stop (DOM boot expected): ${String(e).slice(0, 90)}`); }
   }
   const added = Object.keys(sandbox).filter((k) => !baseline.has(k));
-  const expected = new Set(["WFKernel", "WF", "WFKernelP2Ext", "WFUFDM", "WFGateOverride", "WFUFDMVisual", "WFRecovery"]);
+  const expected = new Set(["WFKernel", "WF", "WFKernelP2Ext", "WFUFDM", "WFGateOverride", "WFUFDMVisual", "WFRecovery", "WFEventChain"]);
   const leaks = added.filter((k) => !expected.has(k));
   if (leaks.length) finding("HIGH", "unexpected globals leaked by built artifact", leaks.join(", "));
   else console.log("[ok] globals confined to:", added.join(", ") || "(none registered pre-DOM)");
