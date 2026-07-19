@@ -3,7 +3,8 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+// Anchor to the repo's .env, not the launcher's cwd
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const { validateEnv } = require('./env-validation.js');
 const bridge = require('./wf-payment-bridge.v1.js');

@@ -4,3 +4,4 @@ node_modules/
 .agents/
 __pycache__/
 dist/
+work/server-governance.json
