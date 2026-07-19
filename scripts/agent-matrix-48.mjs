@@ -60,12 +60,13 @@ add("engine-core", "adapter seam syntax", proc("node", ["--check", "src/kernel-a
 
 /* Crypto & Red-Team (12) — provenance, fuzzing, isolation */
 add("crypto-red", "event chain suite (G2)", proc("node", ["test/event-chain-smoke.mjs"]));
-add("crypto-red", "hostile chaos harness", proc("node", ["test/chaos-fuzz.mjs"]));
+add("crypto-red", "payment webhook bridge suite (MON-1)", proc("node", ["test/payment-bridge-smoke.mjs"]));
+add("crypto-red", "hostile chaos harness (incl. webhook fuzz)", proc("node", ["test/chaos-fuzz.mjs"]));
 add("crypto-red", "global-scope confinement gate", proc("node", ["build.mjs", "--gate"]));
 add("crypto-red", "event-chain module syntax", proc("node", ["--check", "src/wf-event-chain.v1.js"]));
-add("crypto-red", "monetization module syntax", proc("node", ["--check", "src/wf.monetization.v1.js"]));
+add("crypto-red", "payment-bridge module syntax", proc("node", ["--check", "src/wf-payment-bridge.v1.js"]));
 add("crypto-red", "gate-override module syntax", proc("node", ["--check", "src/wf-gate-override.v1.js"]));
-["kernel-smoke", "p2-ext-smoke", "chaos-fuzz", "event-chain-smoke", "recovery-smoke", "monetization-smoke"]
+["kernel-smoke", "p2-ext-smoke", "chaos-fuzz", "event-chain-smoke", "payment-bridge-smoke"]
   .forEach((f) => add("crypto-red", "suite integrity: " + f, proc("node", ["--check", "test/" + f + ".mjs"])));
 
 /* Perf & WAAPI (10) — render-path source checks + artifact weight budget */

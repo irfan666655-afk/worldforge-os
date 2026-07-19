@@ -88,6 +88,14 @@
     if (k.ext && k.ext.getBudget) return k.ext.getBudget(pid);
     return null;
   }
+  /* Server-verified payment provenance (MON-1 bridge). READ-ONLY on both
+   * ends: local records come from the chained decision log; remote ones
+   * arrive pre-serialized via ingestServerEvents. The component never
+   * writes either — it stays powerless by design. */
+  function readVerifiedPayments(k, pid) {
+    return readDecisions(k, pid).filter(function (d) { return d.kind === "payment-verified" && d.payment; })
+      .map(function (d) { return d.payment; });
+  }
 
   function WFUFDMVisual(kernel, opts) {
     this.kernel = kernel;
@@ -96,7 +104,30 @@
     this._unsub = null;
     this._prev = { spend: 0, locks: {} };
     this._mounted = false;
+    this._serverEvents = [];
   }
+
+  /* Read-only ingestion seam for server-verified payment events (the
+   * /api/payments serialization). Display only: entries are validated,
+   * anything carrying processor `amount` vocabulary is refused loudly,
+   * and nothing here can reach a kernel mutator. */
+  WFUFDMVisual.prototype.ingestServerEvents = function (events) {
+    if (!Array.isArray(events)) return this;
+    var clean = [];
+    for (var i = 0; i < events.length; i++) {
+      var e = events[i];
+      if (!e || typeof e !== "object" || "amount" in e) {
+        if (typeof console !== "undefined") console.error("[wf-visual] server event refused (bad shape or `amount` vocabulary)", e);
+        continue;
+      }
+      if (typeof e.event_id !== "string" || typeof e.tx_hash !== "string" || typeof e.cost !== "number") continue;
+      clean.push({ event_id: e.event_id, type: String(e.type || ""), cost: e.cost,
+                   currency: String(e.currency || ""), tx_hash: e.tx_hash, ts: String(e.ts || "") });
+    }
+    this._serverEvents = clean;
+    if (this._mounted) this.update();
+    return this;
+  };
 
   WFUFDMVisual.prototype.mount = function () {
     var self = this;
@@ -146,6 +177,24 @@
                esc(d.reason || d.action || "") +
                '<span class="foot"> — ' + esc(d.actor) + "</span></div>";
       }).join("") : '<span class="foot">No decisions recorded yet.</span>') + "</div></div>";
+
+    // Verified payments panel — rendered only when provenance exists.
+    // Local chained records win over server copies of the same event.
+    var seen = {};
+    var payments = readVerifiedPayments(k, pid).concat(this._serverEvents).filter(function (p) {
+      if (seen[p.event_id]) return false;
+      seen[p.event_id] = true; return true;
+    });
+    if (payments.length)
+      this.el.innerHTML +=
+        '<div class="panel" data-anim="3"><h3>Verified payments</h3><div class="chain">' +
+        payments.slice(0, 8).map(function (p) {
+          return '<div class="arow d-kind-payment-verified">' +
+                 '<span class="id">' + esc(p.type) + "</span> " +
+                 fmt(p.cost) + " " + esc(p.currency) +
+                 '<span class="fp">' + esc((p.tx_hash || "").slice(0, 14)) + "</span>" +
+                 '<span class="foot"> — ' + esc(p.ts) + "</span></div>";
+        }).join("") + "</div></div>";
 
     // motion pass
     var i = 0, self = this;

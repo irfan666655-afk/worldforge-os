@@ -275,6 +275,91 @@ async function freshKernel(opts = {}) {
   console.error = realErr;
 }
 
+/* ---- 9. payment webhook seam: spoof, tamper, replay, race (MON-1 bridge) ---- */
+{
+  const Bridge = require(ROOT + "src/wf-payment-bridge.v1.js");
+  const Chain = require(ROOT + "src/wf-event-chain.v1.js");
+  const SECRET = "whsec_chaos";
+  const NOW = 1_800_000_000;
+  const evt = (id) => JSON.stringify({ id, type: "payment_intent.succeeded", data: { object: { amount: 5000, currency: "usd" } } });
+
+  // 9a. signature fuzz storm — garbage + near-miss headers must ALL reject
+  const body = evt("evt_chaos");
+  const goodSig = Bridge.signPayload(body, SECRET, NOW);
+  const spoofs = ["", "t=,v1=", "garbage", "t=" + NOW, "v1=" + "a".repeat(64),
+    "t=" + NOW + ",v1=" + "0".repeat(64),
+    "t=" + NOW + ",v1=" + goodSig.slice(-64, -1) + "f",         // 1-char forge
+    "t=" + (NOW + 9999) + ",v1=" + goodSig.slice(-64),          // valid hmac, shifted ts
+    goodSig.toUpperCase(), goodSig + ",v2=extra"];
+  for (let i = 0; i < 40; i++) spoofs.push("t=" + NOW + ",v1=" + [...Array(64)].map(() => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join(""));
+  let accepted = 0;
+  for (const h of spoofs) { try { Bridge.verifySignature({ rawBody: body, header: h, secret: SECRET, nowSec: NOW }); accepted++; } catch { /* rejected = correct */ } }
+  if (accepted) finding("CRITICAL", "spoofed webhook signature accepted", accepted + " of " + spoofs.length + " forged headers verified");
+  else console.log("[ok] " + spoofs.length + " spoofed/forged signature headers all refused");
+
+  // 9b. byte-flip tamper — a signed-then-altered body must never verify
+  let tamperPassed = 0;
+  for (const pos of [0, 5, 20, body.length - 2]) {
+    const flipped = body.slice(0, pos) + String.fromCharCode(body.charCodeAt(pos) ^ 1) + body.slice(pos + 1);
+    try { Bridge.verifySignature({ rawBody: flipped, header: goodSig, secret: SECRET, nowSec: NOW }); tamperPassed++; } catch { }
+  }
+  if (tamperPassed) finding("CRITICAL", "tampered webhook body verified", tamperPassed + " byte-flips passed HMAC");
+  else console.log("[ok] byte-flipped bodies all failed authentication");
+
+  // 9c+9d. ingest under attack: concurrent distinct events all land chained,
+  // concurrent DUPLICATES land exactly once, ledger stays verifiable
+  const { kernel } = await freshKernel();
+  Chain.install(kernel);
+  const norm = (id) => Bridge.normalizeProcessorEvent(JSON.parse(evt(id)));
+  const distinct = await Promise.allSettled([1, 2, 3, 4, 5, 6].map((i) => Bridge.ingest(kernel, norm("evt_r" + i))));
+  const dupes = await Promise.allSettled([0, 0, 0].map(() => Bridge.ingest(kernel, norm("evt_dup"))));
+  const log = kernel.getProjectState().decision_log;
+  const dupCount = log.filter((r) => r.payment && r.payment.event_id === "evt_dup").length;
+  const v = kernel.verifyEventChain();
+  if (distinct.some((r) => r.status === "rejected") || log.length !== 7)
+    finding("HIGH", "concurrent distinct webhook ingests lost records", "landed=" + log.length + " expected 7");
+  else if (dupCount !== 1 || dupes.filter((r) => r.status === "fulfilled").length !== 1)
+    finding("CRITICAL", "concurrent duplicate ingest double-recorded a payment", "evt_dup landed " + dupCount + "x");
+  else if (!v.ok) finding("CRITICAL", "payment ingest broke the event chain", JSON.stringify(v));
+  else console.log("[ok] ingest race: 6 distinct landed, duplicate landed exactly once, chain verifies");
+
+  // 9e. vocabulary law — no `amount` key anywhere in persisted records
+  const hasAmount = (o) => o && typeof o === "object" && (("amount" in o) || Object.values(o).some(hasAmount));
+  if (log.some(hasAmount)) finding("CRITICAL", "processor `amount` leaked into a governance record", "frozen cost vocabulary violated");
+  else console.log("[ok] processor `amount` never survives into governance records");
+
+  // 9f. live HTTP storm — malicious traffic refused LOUDLY, ledger untouched
+  const os = await import("node:os"); const fs2 = await import("node:fs");
+  const pathMod = await import("node:path"); const http = await import("node:http");
+  process.env.WF_WEBHOOK_SECRET = SECRET;
+  process.env.WF_GOV_FILE = pathMod.join(fs2.mkdtempSync(pathMod.join(os.tmpdir(), "wfchaos-")), "gov.json");
+  const app = require(ROOT + "src/server.js");
+  const srv = app.listen(0); const port = srv.address().port;
+  const post = (headers, raw) => new Promise((resolve) => {
+    const rq = http.request({ port, path: "/api/webhooks/payment", method: "POST", headers: { "content-type": "application/json", ...headers } },
+      (res) => { res.resume(); res.on("end", () => resolve(res.statusCode)); });
+    rq.on("error", () => resolve(0)); rq.end(raw);
+  });
+  let loud = 0; const realErr2 = console.error; console.error = () => { loud++; };
+  const nowSec = Math.floor(Date.now() / 1000);
+  const liveBody = evt("evt_live");
+  const okStatus = await post({ "wf-signature": Bridge.signPayload(liveBody, SECRET, nowSec) }, liveBody);
+  const attackStatuses = [];
+  for (let i = 0; i < 10; i++) attackStatuses.push(await post({ "wf-signature": "t=" + nowSec + ",v1=" + "f".repeat(64) }, liveBody));
+  attackStatuses.push(await post({ "wf-signature": Bridge.signPayload(liveBody, SECRET, nowSec) }, liveBody));            // replay
+  attackStatuses.push(await post({ "wf-signature": Bridge.signPayload("not-json", SECRET, nowSec) }, "not-json"));         // signed garbage
+  attackStatuses.push(await post({}, liveBody));                                                                            // no header
+  console.error = realErr2;
+  srv.close();
+  const gov = JSON.parse(fs2.readFileSync(process.env.WF_GOV_FILE, "utf8"));
+  const govLog = JSON.parse(gov[Object.keys(gov).find((k) => k.startsWith("wfproj:"))]).decision_log;
+  if (okStatus !== 200) finding("HIGH", "legitimate signed webhook refused over HTTP", "status=" + okStatus);
+  else if (attackStatuses.some((s) => s < 400)) finding("CRITICAL", "malicious webhook traffic accepted over HTTP", attackStatuses.join(","));
+  else if (govLog.length !== 1) finding("CRITICAL", "attack traffic mutated the governance ledger", "records=" + govLog.length + " expected 1");
+  else if (!loud) finding("MEDIUM", "webhook refusals are silent", "fail-closed but not fail-loud");
+  else console.log("[ok] HTTP storm: 1 legit landed, " + attackStatuses.length + " attacks refused loudly, ledger untouched");
+}
+
 console.log("\n================ CHAOS REPORT ================");
 if (!findings.length) console.log("no findings — all probes survived");
 for (const f of findings) console.log(`[${f.sev}] ${f.name}\n    ${f.detail}`);
