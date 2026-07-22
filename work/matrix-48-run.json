@@ -1,11 +1,11 @@
 {
-  "ts": "2026-07-22T20:45:00.940Z",
+  "ts": "2026-07-22T20:49:40.255Z",
   "disclaimer": "Local parallel job runner on one machine. 48 lanes = 48 real micro-jobs, not 48 compute nodes and not a distributed or decentralized architecture.",
   "concurrency": 8,
   "lanes": 48,
-  "wallMs": 648,
-  "serialMs": 4140,
-  "speedup": 6.39,
+  "wallMs": 655,
+  "serialMs": 4404,
+  "speedup": 6.72,
   "artifactBytes": 163940,
   "clusters": {
     "engine-core": {
@@ -37,91 +37,91 @@
   "status": "GREEN",
   "results": [
     {
-      "node": "N07",
-      "cluster": "engine-core",
-      "desc": "kernel syntax",
-      "ok": true,
-      "ms": 48,
-      "tail": ""
-    },
-    {
       "node": "N03",
       "cluster": "engine-core",
       "desc": "recovery/rollback suite",
       "ok": true,
-      "ms": 108,
+      "ms": 66,
       "tail": "11 passed, 0 failed"
     },
     {
-      "node": "N05",
+      "node": "N07",
       "cluster": "engine-core",
-      "desc": "deterministic re-bundle",
+      "desc": "kernel syntax",
       "ok": true,
-      "ms": 131,
-      "tail": "OK: built worldforge-os_5.html · bundle sha256:529777fc753"
+      "ms": 75,
+      "tail": ""
     },
     {
       "node": "N08",
       "cluster": "engine-core",
       "desc": "ext syntax",
       "ok": true,
-      "ms": 126,
+      "ms": 87,
       "tail": ""
-    },
-    {
-      "node": "N06",
-      "cluster": "engine-core",
-      "desc": "bundle hash verification",
-      "ok": true,
-      "ms": 138,
-      "tail": "OK: bundle fresh — embedded hash matches rebuild"
     },
     {
       "node": "N04",
       "cluster": "engine-core",
       "desc": "billing contract suite",
       "ok": true,
-      "ms": 150,
+      "ms": 116,
       "tail": "20 passed, 0 failed"
     },
     {
-      "node": "N01",
+      "node": "N06",
       "cluster": "engine-core",
-      "desc": "kernel contract suite",
+      "desc": "bundle hash verification",
       "ok": true,
-      "ms": 162,
-      "tail": "30 passed, 0 failed"
+      "ms": 115,
+      "tail": "OK: bundle fresh — embedded hash matches rebuild"
     },
     {
       "node": "N02",
       "cluster": "engine-core",
       "desc": "ext v1.2.1 + FIFO suite",
       "ok": true,
-      "ms": 162,
+      "ms": 131,
       "tail": "31 passed, 0 failed"
     },
     {
-      "node": "N09",
+      "node": "N01",
       "cluster": "engine-core",
-      "desc": "recovery syntax",
+      "desc": "kernel contract suite",
       "ok": true,
-      "ms": 102,
-      "tail": ""
+      "ms": 143,
+      "tail": "30 passed, 0 failed"
     },
     {
       "node": "N10",
       "cluster": "engine-core",
       "desc": "adapter seam syntax",
       "ok": true,
-      "ms": 61,
+      "ms": 83,
       "tail": ""
     },
     {
-      "node": "N18",
-      "cluster": "crypto-red",
-      "desc": "suite integrity: kernel-smoke",
+      "node": "N09",
+      "cluster": "engine-core",
+      "desc": "recovery syntax",
       "ok": true,
-      "ms": 39,
+      "ms": 109,
+      "tail": ""
+    },
+    {
+      "node": "N05",
+      "cluster": "engine-core",
+      "desc": "deterministic re-bundle",
+      "ok": true,
+      "ms": 197,
+      "tail": "OK: built worldforge-os_5.html · bundle sha256:529777fc753"
+    },
+    {
+      "node": "N15",
+      "cluster": "crypto-red",
+      "desc": "event-chain module syntax",
+      "ok": true,
+      "ms": 76,
       "tail": ""
     },
     {
@@ -129,7 +129,15 @@
       "cluster": "crypto-red",
       "desc": "payment-bridge module syntax",
       "ok": true,
-      "ms": 74,
+      "ms": 54,
+      "tail": ""
+    },
+    {
+      "node": "N18",
+      "cluster": "crypto-red",
+      "desc": "suite integrity: kernel-smoke",
+      "ok": true,
+      "ms": 50,
       "tail": ""
     },
     {
@@ -137,7 +145,7 @@
       "cluster": "crypto-red",
       "desc": "gate-override module syntax",
       "ok": true,
-      "ms": 81,
+      "ms": 84,
       "tail": ""
     },
     {
@@ -145,15 +153,23 @@
       "cluster": "crypto-red",
       "desc": "event chain suite (G2)",
       "ok": true,
-      "ms": 118,
+      "ms": 166,
       "tail": "16 passed, 0 failed"
     },
     {
-      "node": "N15",
+      "node": "N14",
       "cluster": "crypto-red",
-      "desc": "event-chain module syntax",
+      "desc": "global-scope confinement gate",
       "ok": true,
-      "ms": 105,
+      "ms": 139,
+      "tail": "OK: global-scope gate clean — kernel access confined to ke"
+    },
+    {
+      "node": "N19",
+      "cluster": "crypto-red",
+      "desc": "suite integrity: p2-ext-smoke",
+      "ok": true,
+      "ms": 70,
       "tail": ""
     },
     {
@@ -161,55 +177,7 @@
       "cluster": "crypto-red",
       "desc": "suite integrity: chaos-fuzz",
       "ok": true,
-      "ms": 37,
-      "tail": ""
-    },
-    {
-      "node": "N19",
-      "cluster": "crypto-red",
-      "desc": "suite integrity: p2-ext-smoke",
-      "ok": true,
-      "ms": 80,
-      "tail": ""
-    },
-    {
-      "node": "N14",
-      "cluster": "crypto-red",
-      "desc": "global-scope confinement gate",
-      "ok": true,
-      "ms": 152,
-      "tail": "OK: global-scope gate clean — kernel access confined to ke"
-    },
-    {
-      "node": "N21",
-      "cluster": "crypto-red",
-      "desc": "suite integrity: event-chain-smoke",
-      "ok": true,
-      "ms": 75,
-      "tail": ""
-    },
-    {
-      "node": "N23",
-      "cluster": "perf-waapi",
-      "desc": "render-path syntax: wf-ufdm-visual.v1.js",
-      "ok": true,
-      "ms": 67,
-      "tail": ""
-    },
-    {
-      "node": "N24",
-      "cluster": "perf-waapi",
-      "desc": "render-path syntax: wf-ufdm-components.v1.js",
-      "ok": true,
-      "ms": 61,
-      "tail": ""
-    },
-    {
-      "node": "N25",
-      "cluster": "perf-waapi",
-      "desc": "render-path syntax: components/escalation-viz.js",
-      "ok": true,
-      "ms": 54,
+      "ms": 68,
       "tail": ""
     },
     {
@@ -217,7 +185,39 @@
       "cluster": "crypto-red",
       "desc": "suite integrity: payment-bridge-smoke",
       "ok": true,
-      "ms": 97,
+      "ms": 56,
+      "tail": ""
+    },
+    {
+      "node": "N21",
+      "cluster": "crypto-red",
+      "desc": "suite integrity: event-chain-smoke",
+      "ok": true,
+      "ms": 87,
+      "tail": ""
+    },
+    {
+      "node": "N24",
+      "cluster": "perf-waapi",
+      "desc": "render-path syntax: wf-ufdm-components.v1.js",
+      "ok": true,
+      "ms": 87,
+      "tail": ""
+    },
+    {
+      "node": "N25",
+      "cluster": "perf-waapi",
+      "desc": "render-path syntax: components/escalation-viz.js",
+      "ok": true,
+      "ms": 79,
+      "tail": ""
+    },
+    {
+      "node": "N26",
+      "cluster": "perf-waapi",
+      "desc": "render-path syntax: components/forge.js",
+      "ok": true,
+      "ms": 69,
       "tail": ""
     },
     {
@@ -225,7 +225,7 @@
       "cluster": "perf-waapi",
       "desc": "artifact under 250KB weight budget",
       "ok": true,
-      "ms": 1,
+      "ms": 3,
       "tail": "✔ artifact size within budget"
     },
     {
@@ -237,27 +237,27 @@
       "tail": "✔ WAAPI + rAF paths intact"
     },
     {
+      "node": "N23",
+      "cluster": "perf-waapi",
+      "desc": "render-path syntax: wf-ufdm-visual.v1.js",
+      "ok": true,
+      "ms": 114,
+      "tail": ""
+    },
+    {
+      "node": "N27",
+      "cluster": "perf-waapi",
+      "desc": "render-path syntax: components/text-roster.js",
+      "ok": true,
+      "ms": 77,
+      "tail": ""
+    },
+    {
       "node": "N30",
       "cluster": "perf-waapi",
       "desc": "render-path syntax: guilds-data.js",
       "ok": true,
-      "ms": 34,
-      "tail": ""
-    },
-    {
-      "node": "N29",
-      "cluster": "perf-waapi",
-      "desc": "render-path syntax: app.js",
-      "ok": true,
-      "ms": 47,
-      "tail": ""
-    },
-    {
-      "node": "N26",
-      "cluster": "perf-waapi",
-      "desc": "render-path syntax: components/forge.js",
-      "ok": true,
-      "ms": 82,
+      "ms": 59,
       "tail": ""
     },
     {
@@ -265,7 +265,7 @@
       "cluster": "hygiene",
       "desc": "rules.v1.json parses + has rules",
       "ok": true,
-      "ms": 1,
+      "ms": 0,
       "tail": "✔ rules parse"
     },
     {
@@ -289,15 +289,15 @@
       "cluster": "perf-waapi",
       "desc": "render-path syntax: vendor-loader.js",
       "ok": true,
-      "ms": 68,
+      "ms": 91,
       "tail": ""
     },
     {
-      "node": "N27",
+      "node": "N29",
       "cluster": "perf-waapi",
-      "desc": "render-path syntax: components/text-roster.js",
+      "desc": "render-path syntax: app.js",
       "ok": true,
-      "ms": 91,
+      "ms": 78,
       "tail": ""
     },
     {
@@ -305,7 +305,7 @@
       "cluster": "hygiene",
       "desc": "rules matrix freshness",
       "ok": true,
-      "ms": 70,
+      "ms": 130,
       "tail": "gen_rules --check: fresh."
     },
     {
@@ -337,7 +337,7 @@
       "cluster": "brand-telem",
       "desc": "collateral non-empty: architecture-deep-dive.md",
       "ok": true,
-      "ms": 0,
+      "ms": 1,
       "tail": "✔ collateral present"
     },
     {
@@ -365,11 +365,19 @@
       "tail": "✔ telemetry parse"
     },
     {
+      "node": "N35",
+      "cluster": "hygiene",
+      "desc": "lint: roster-only pass",
+      "ok": true,
+      "ms": 114,
+      "tail": "0 error(s), 0 warning(s)."
+    },
+    {
       "node": "N40",
       "cluster": "hygiene",
       "desc": "branding generator syntax",
       "ok": true,
-      "ms": 70,
+      "ms": 88,
       "tail": ""
     },
     {
@@ -377,23 +385,15 @@
       "cluster": "hygiene",
       "desc": "orchestrator syntax",
       "ok": true,
-      "ms": 83,
+      "ms": 102,
       "tail": ""
-    },
-    {
-      "node": "N35",
-      "cluster": "hygiene",
-      "desc": "lint: roster-only pass",
-      "ok": true,
-      "ms": 93,
-      "tail": "0 error(s), 0 warning(s)."
     },
     {
       "node": "N41",
       "cluster": "brand-telem",
       "desc": "regenerate branding collateral",
       "ok": true,
-      "ms": 75,
+      "ms": 111,
       "tail": "    artifact=163,940 B · reduction=74.9% · decisions=8 · f"
     },
     {
@@ -401,24 +401,24 @@
       "cluster": "crypto-red",
       "desc": "payment webhook bridge suite (MON-1)",
       "ok": true,
-      "ms": 443,
+      "ms": 467,
       "tail": "25 passed, 0 failed"
-    },
-    {
-      "node": "N34",
-      "cluster": "hygiene",
-      "desc": "full lint: roster + schema + drift",
-      "ok": true,
-      "ms": 263,
-      "tail": "0 error(s), 0 warning(s)."
     },
     {
       "node": "N13",
       "cluster": "crypto-red",
       "desc": "hostile chaos harness (incl. webhook fuzz)",
       "ok": true,
-      "ms": 491,
+      "ms": 498,
       "tail": "no findings — all probes survived"
+    },
+    {
+      "node": "N34",
+      "cluster": "hygiene",
+      "desc": "full lint: roster + schema + drift",
+      "ok": true,
+      "ms": 264,
+      "tail": "0 error(s), 0 warning(s)."
     }
   ]
 }

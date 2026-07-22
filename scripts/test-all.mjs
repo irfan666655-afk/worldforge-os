@@ -27,6 +27,7 @@ const SUITES = [
   ["recovery-smoke.mjs", "recovery / rollback"],
   ["event-chain-smoke.mjs", "SHA-256 event chain (G2)"],
   ["payment-bridge-smoke.mjs", "payment webhook bridge (MON-1)"],
+  ["server-storage-smoke.mjs", "server recovery parity + atomic flush"],
   ["chaos-fuzz.mjs", "hostile chaos harness"],
 ];
 

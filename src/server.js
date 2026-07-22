@@ -11,6 +11,7 @@ const bridge = require('./wf-payment-bridge.v1.js');
 const WFKernel = require('../worldforge-kernel.v1.1.js');
 const P2Ext = require('./wfkernel-p2-ext.v1.2.js');
 const Chain = require('./wf-event-chain.v1.js');
+const WFRecovery = require('./wf-recovery.v1.js');
 
 /* Boot preflight: unpopulated seams are DISABLED (503 + ENV code), never
  * run on undefined credentials. The server still boots for what it can do. */
@@ -58,9 +59,20 @@ const GOV_FILE = process.env.WF_GOV_FILE || path.join(__dirname, '..', 'work', '
 function fileStorage(file) {
     let mem = {};
     try { mem = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* first boot */ }
+    /* Crash-atomic flush: write to <file>.tmp, fsync the bytes to disk, then
+     * atomically rename over the target. A crash mid-write leaves the previous
+     * ledger intact instead of a truncated (corrupt) primary. */
     const flush = () => {
         fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, JSON.stringify(mem));
+        const tmp = file + '.tmp';
+        const fd = fs.openSync(tmp, 'w');
+        try {
+            fs.writeFileSync(fd, JSON.stringify(mem));
+            fs.fsyncSync(fd);
+        } finally {
+            fs.closeSync(fd);
+        }
+        fs.renameSync(tmp, file);
     };
     return {
         get: async (k) => (k in mem ? { key: k, value: mem[k] } : null),
@@ -73,7 +85,11 @@ function fileStorage(file) {
 let govPromise = null;
 function governance() {
     if (!govPromise) govPromise = (async () => {
-        const storage = fileStorage(GOV_FILE);
+        /* Storage-seam recovery parity with the browser tier: wrap the file
+         * adapter so a corrupt-at-rest primary auto-rolls-back to the last
+         * hash-verified shadow (fail-loud), and a corrupt write never lands
+         * (fail-closed). Kernel/ext are untouched — mixin discipline. */
+        const storage = WFRecovery.wrap(fileStorage(GOV_FILE), { prefixes: ['wfproj:'] });
         const pipelineCanon = {
             stages: [{ id: 'st0', label: 'Open' }, { id: 'st1', label: 'Closed' }],
             storage: { projectPrefix: 'wfproj:' },
@@ -245,6 +261,9 @@ app.post('/api/agents', async (req, res) => {
 
 // For Vercel Serverless compatibility, we export the app
 module.exports = app;
+// Test hooks (non-enumerable-ish helpers; module.exports stays === app):
+app._fileStorage = fileStorage;
+app._WFRecovery = WFRecovery;
 
 // Listen if started directly
 if (require.main === module) {

@@ -82,11 +82,13 @@ Every suite runs green on Linux/Node 22 — see
 for the full independently-reproduced transcript, including the one
 portability bug found and fixed in this pass.
 
-- **133/133** unit assertions across 6 suites (kernel 30 · ext 31 ·
-  billing 20 · recovery 11 · event-chain 16 · payment-bridge 25)
+- **144/144** unit assertions across 7 suites (kernel 30 · ext 31 ·
+  billing 20 · recovery 11 · event-chain 16 · payment-bridge 25 ·
+  server storage 11)
 - Chaos harness: **no findings** — all probes survived
 - **48/48** matrix lanes GREEN
-- Live server: signed webhook recorded + chain verifies end-to-end
+- Live server: signed webhook recorded + chain verifies end-to-end, with
+  server-side recovery parity (shadow rollback) and crash-atomic flush
 
 > **Honesty note.** The 48 "lanes" are a local parallel job runner on one
 > machine (real subprocesses, real exit codes) — not a distributed system.

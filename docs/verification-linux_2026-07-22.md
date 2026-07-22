@@ -49,8 +49,9 @@ survived`) and the 48-lane matrix reaches 48/48.
 | Recovery / rollback | `node test/recovery-smoke.mjs` | 11 passed, 0 failed |
 | SHA-256 event chain (G2) | `node test/event-chain-smoke.mjs` | 16 passed, 0 failed |
 | Payment bridge (MON-1) | `node test/payment-bridge-smoke.mjs` | 25 passed, 0 failed |
+| Server storage parity | `node test/server-storage-smoke.mjs` | 11 passed, 0 failed |
 | Chaos harness | `node test/chaos-fuzz.mjs` | no findings (fixed) |
-| **Aggregate** | `npm test` | **7/7 suites · 133 assertions · GREEN** |
+| **Aggregate** | `npm test` | **8/8 suites · 144 assertions · GREEN** |
 | Notary bundle | `node build.mjs --bundle` | sha256 `529777fc753…` |
 | Freshness | `node build.mjs --verify` | bundle fresh |
 | Global-scope gate | `node build.mjs --gate` | clean |
@@ -71,10 +72,15 @@ deterministic build reproduces byte-for-byte.
 2. **Lint had one soft warning** — `jsonschema not installed — compile check
    skipped`. Resolved by installing `jsonschema` (now in the CI step); lint is
    0/0 with it present.
-3. **Server-side recovery parity** (already noted in the chronicle, V.3.3):
-   `src/server.js`'s `fileStorage` is not wrapped by `WFRecovery`, so the
-   server ledger has weaker durability than the browser. Left as-is (a
-   ratified design change, not a bug); flagged for a future decision record.
+3. **Server-side recovery parity** (chronicle V.3.3) — **FIXED in this pass.**
+   `src/server.js`'s `fileStorage` was not wrapped by `WFRecovery` (weaker
+   durability than the browser) and `flush()` did a direct `writeFileSync` (a
+   crash mid-write truncates the ledger). Now: the governance storage is
+   wrapped with `WFRecovery.wrap(..., { prefixes: ['wfproj:'] })` — corrupt
+   primaries auto-roll-back to a hash-verified shadow, corrupt writes are
+   refused — and `flush()` is crash-atomic (`tmp → fsync → rename`). Covered
+   by the new `test/server-storage-smoke.mjs` (11 assertions) and re-proven
+   live (shadow persists to disk, no leftover `.tmp`, payment path unchanged).
 
 ## Live server proof (end-to-end HTTP)
 
@@ -96,9 +102,13 @@ event chain verifies live.
 ## What changed in this pass
 
 - **Fixed:** `test/chaos-fuzz.mjs` cross-platform repo-root resolution.
-- **Added:** `scripts/test-all.mjs` (portable aggregate runner), `npm`
-  scripts (`test`, `test:matrix`, `build`, `verify`, `lint`),
-  `.github/workflows/ci.yml` (ubuntu matrix), `README.md`, this report.
+- **Fixed (durability, chronicle V.3.3):** `src/server.js` governance storage
+  now wrapped by `WFRecovery` (shadow rollback, fail-closed corrupt-write
+  refusal) with a crash-atomic `flush()` (`tmp → fsync → rename`).
+- **Added:** `scripts/test-all.mjs` (portable aggregate runner),
+  `test/server-storage-smoke.mjs` (11 assertions), `npm` scripts (`test`,
+  `test:matrix`, `build`, `verify`, `lint`), `.github/workflows/ci.yml`
+  (ubuntu matrix), `README.md`, this report.
 - **Imported:** the full runnable tree (kernel, ext, trust + commercial
   layers, tests, build notary, linters, scripts) into the repo, which
   previously held only a minimal server stub.
