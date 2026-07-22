@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+# Publishes the self-contained WorldForge OS artifact as a live static site.
+# The artifact is a single zero-dependency HTML file that runs offline, so it
+# needs no server — GitHub Pages serves it directly. Runs on main after merge.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build the deterministic artifact
+        run: node build.mjs --bundle
+
+      - name: Verify freshness (embedded hash matches rebuild)
+        run: node build.mjs --verify
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p _site
+          cp worldforge-os_5.html _site/index.html
+          # Also expose the shipped v6.0 immersive client alongside it.
+          cp worldforge_v6_0.html _site/v6.html || true
+          echo "WorldForge OS — live artifact" > _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
