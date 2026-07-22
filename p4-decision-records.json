@@ -1,0 +1,87 @@
+{
+  "ledger": "P4 + P2 execution — 2026-07-17 session",
+  "note": "actor 'human' per MARKER ACT-1 interim convention (roster-id-or-'human'); executed by Fable 5 session under P4-D1–D4 prior ratification. Records D1–D4 confirm ratified decisions now EXECUTED; D5–D7 are new this session.",
+  "records": [
+    {
+      "id": "dec_p4_module_system",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:module_system",
+      "impact": "medium",
+      "rationale": "P4-D1 executed as ratified: all seven modules authored as UMD (worldforge pattern), bundled by transform-free manifest-order concatenation via build.mjs. ESM+esbuild alternative rejected because zero-dependency deterministic builds beat tree-shaking at this codebase size. Drafted ES modules (vendor-loader, text-roster) mechanically re-wrapped per module-wrapper-template.js.",
+      "rule_overrides": []
+    },
+    {
+      "id": "dec_p4_vendor_deletion",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:vendor_deletion",
+      "impact": "high",
+      "rationale": "P4-D2 executed: vendored Three.js (2021 r13x, block 00, HTML lines 268-276) deleted; sole load path is now vendor-loader.js CDN lazy-load (r128, 8s timeout) with single degradation path (wf:vendor-fallback -> text-roster) shared with the WebGL-unavailable trigger. MEASURED size delta resolves MUST-VERIFY P4-SZ1: vendored block was 603,447 B; artifact 653,674 B -> 76,145 B (88.3% reduction). The strategy's '~25MB' expectation was a garbling of the audit's correct '25x smaller / 603KB' figures — corrected on record.",
+      "rule_overrides": []
+    },
+    {
+      "id": "dec_p4_foundry_deadcheck",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:dead_code",
+      "impact": "medium",
+      "rationale": "P4-D3 dead-check executed: build.mjs --deadcheck foundry-visualizer reports zero live references across the extracted tree — deletion is SAFE. Physical deletion of foundry-visualizer_5.html deferred to marker P3-M1 (delete vs redirect stub), which is Irfan's held decision authority; recommendation on record remains delete + decision record. This record certifies the precondition, not the act.",
+      "rule_overrides": []
+    },
+    {
+      "id": "dec_p4_css_orphans",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:dead_code",
+      "impact": "low",
+      "rationale": "Resolves MUST-VERIFY P4-CSS1: the 8 CSS orphan candidates flagged by --deadcheck (project-card, selected, rail-station, done, current, d-row, d-kind-gate-pass, d-kind-step-back) are ALL live — constructed via JS string concatenation, invisible to the literal-only scanner. Zero CSS deleted. Known follow-up: new class d-kind-gate-override (rendered by forge.js for kernel override records) has no stylesheet rule yet; falls back to unstyled — cosmetic only.",
+      "rule_overrides": []
+    },
+    {
+      "id": "dec_p4_kernel_extraction",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:module_system",
+      "impact": "high",
+      "rationale": "Re-derivation of the M1 deliverable (prior session output never persisted to project knowledge; disk is truth). worldforge-kernel.v1.1.js extracted from monolith KERNEL_ACCESS regions and bound to the recovered public contract (fragment-inventory_v1.md): createKernel({storage,pipeline,actor}), storage/pipeline required-with-throw, PREFIX/LEGACY derived from pipeline.storage, gate-on-leaving semantics with gate-pass vs gate-override logging, step-back reason required, 100-entry decision cap, single-persist mutations, one-time legacy migration. Six EXTRACT-DIVERGENCE entries logged in the file header (ED-1 storage injection, ED-2 constant derivation, ED-3 gate semantics, ED-4 actor seam, ED-5 pipeline injection, ED-6 versioning). Verified by 30/30 Node smoke suite.",
+      "rule_overrides": []
+    },
+    {
+      "id": "dec_p4_p2_slot_deferred",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:module_system",
+      "impact": "medium",
+      "rationale": "ASSUMPTION (conservative default, zero-clarification rule): wf-ufdm-components excluded from this bundle manifest. The handoff sequences P2 integration as its own step (MockKernel swap, ext load order) after P4 extraction; shipping P2 components unwired adds surface without function and risks competing refactors on the same HTML. Manifest slot reserved between kernel-adapter and text-roster; P2 integration is the immediate next mission. Flagged for Irfan's confirmation.",
+      "rule_overrides": []
+    },
+    {
+      "id": "dec_p4_build_splice_fix",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:build_tool",
+      "impact": "high",
+      "rationale": "Bug found and fixed in build.mjs --bundle: splicing with a replacement STRING lets JavaScript interpret $-patterns ($&, $1) occurring in bundled source — text-roster's cssEsc regex contains a literal '$&', which injected the WF:BUNDLE markers into the middle of the bundle and produced a syntactically broken artifact. Fixed with a function replacer (immune to $-patterns). Detection method added to release checks: extract every inline <script> from the BUILT artifact and node --check each — the bundle hash check alone cannot catch this class (hash was 'fresh' over corrupted output).",
+      "rule_overrides": []
+    },
+    {
+      "id": "dec_p2_integration",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:module_system",
+      "impact": "high",
+      "rationale": "P2 integration executed into the reserved bundle slot (supersedes dec_p4_p2_slot_deferred's deferral). wfkernel-p2-ext bound v1.1 -> v1.2 against the REAL kernel: all six VERIFY(kernel-src) markers burned, three genuine divergences found and fixed by the marker discipline — (1) ext storage fallback omitted shared=true, silently splitting write scope from the kernel's reads; (2) eventing: kernel has its own subscribe, so v1.1's fallback-only pattern left ext events invisible to kernel subscribers — v1.2 chains one subscription into both channels; (3) budget entries: components' frozen shape uses `cost`, ext read `amount` — now cost-with-legacy-fallback. Multi-project reconciliation: kernel.bindProject(id) added (ext mixin, kernel untouched); getProjectState derives from the binding. P2 governance records land in state.decision_log (frozen asset-ledger shape), kept distinct from the kernel pipeline ledger state.decisions. Load order kernel -> ext -> components -> app enforced by manifest. Verified: 21/21 ext suite against real kernel, 30/30 kernel suite unchanged, gate clean, all built script blocks node --check clean. MockKernel fully retired on disk. MARKER PIPE-1 unchanged: pipeline injected as interim canonical object tagged provenance:'interim-pending-PIPE-1'; swaps to pipeline.v1.json with zero code changes.",
+      "rule_overrides": []
+    },
+    {
+      "id": "dec_p2_app_storage_singleton",
+      "timestamp": "2026-07-17T00:00:00Z",
+      "actor": "human",
+      "action": "p4:build_tool",
+      "impact": "medium",
+      "rationale": "Fixed at review: app.js constructed the storage adapter twice (kernel and ext), which is harmless when window.storage exists (same object) but splits kernel and ext into two disjoint in-memory stores under the file:// shim. Single hoisted instance now shared by both.",
+      "rule_overrides": []
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+name: WorldForge OS CI
+
+# Full verification matrix on every push / PR. Runs on ubuntu-latest — the
+# exact POSIX platform on which the chaos harness path bug (fixed here) used
+# to hard-crash. Green here means green on the deployment target.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Python lint dependencies
+        run: pip install jsonschema
+
+      - name: Unit + chaos suites (133 assertions)
+        run: npm test
+
+      - name: Build notary — deterministic bundle
+        run: npm run build
+
+      - name: Verify freshness + global-scope gate
+        run: npm run verify
+
+      - name: Linters (roster + schema + rules matrix)
+        run: npm run lint
+
+      - name: 48-lane verification matrix
+        run: npm run test:matrix
