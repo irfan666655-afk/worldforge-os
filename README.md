@@ -60,6 +60,12 @@ can do):
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` | roster-api | `503 ENV-01/02` |
 | `WF_WEBHOOK_SECRET` | payment-webhook | `503 ENV-03` |
 
+A green **`DATABASE CONNECTED`** badge needs both a Vercel deployment (so the
+API exists) and Supabase env vars set — otherwise the UI shows an amber
+**`OFFLINE MOCK`** badge and runs on a built-in roster (fully usable, by
+design). Full walkthrough + Supabase schema: **[`docs/USAGE.md`](docs/USAGE.md)**
+and [`supabase/schema.sql`](supabase/schema.sql).
+
 See `.env.example`. The governance ledger is file-backed
 (`work/server-governance.json`, git-ignored) and survives restarts; verified
 payments land as SHA-256 hash-chained `payment-verified` records.
