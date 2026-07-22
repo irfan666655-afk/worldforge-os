@@ -4,7 +4,12 @@
   "description": "WorldForge Agent Foundry backend service",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node scripts/test-all.mjs",
+    "test:matrix": "node scripts/gen-branding-assets.js && node scripts/agent-matrix-48.mjs",
+    "build": "node build.mjs --bundle",
+    "verify": "node build.mjs --verify && node build.mjs --gate",
+    "lint": "python3 lint_worldforge.py --roster agent-roster.v5.2.json --schema asset-library-schema.v3.1.json --html worldforge-os_5.html && python3 gen_rules.py --check"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

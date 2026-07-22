@@ -1,0 +1,89 @@
+{
+  "ts": "2026-07-19T14:15:54.610Z",
+  "fast": false,
+  "artifactBytes": 149437,
+  "tickets": [
+    {
+      "id": "T-01",
+      "agent": "Linter-Haiku",
+      "desc": "rules matrix freshness (gen_rules --check)",
+      "ok": true,
+      "ms": 442,
+      "tail": "gen_rules --check: fresh."
+    },
+    {
+      "id": "T-02",
+      "agent": "Linter-Haiku",
+      "desc": "full lint: roster + schema + artifact drift",
+      "ok": true,
+      "ms": 1144,
+      "tail": "0 error(s), 0 warning(s)."
+    },
+    {
+      "id": "T-03",
+      "agent": "Worker-Sonnet",
+      "desc": "deterministic re-bundle",
+      "ok": true,
+      "ms": 198,
+      "tail": "OK: built worldforge-os_5.html · bundle sha256:82a0b064421cb"
+    },
+    {
+      "id": "T-04",
+      "agent": "Worker-Sonnet",
+      "desc": "bundle hash verification",
+      "ok": true,
+      "ms": 191,
+      "tail": "OK: bundle fresh — embedded hash matches rebuild"
+    },
+    {
+      "id": "T-05",
+      "agent": "Core-Fable-5",
+      "desc": "global-scope confinement gate",
+      "ok": true,
+      "ms": 180,
+      "tail": "OK: global-scope gate clean — kernel access confined to kern"
+    },
+    {
+      "id": "T-06",
+      "agent": "Worker-Sonnet",
+      "desc": "kernel contract suite (30 cases)",
+      "ok": true,
+      "ms": 195,
+      "tail": "30 passed, 0 failed"
+    },
+    {
+      "id": "T-07",
+      "agent": "Worker-Sonnet",
+      "desc": "ext v1.2.1 suite (31 cases)",
+      "ok": true,
+      "ms": 293,
+      "tail": "31 passed, 0 failed"
+    },
+    {
+      "id": "T-08",
+      "agent": "Worker-Sonnet",
+      "desc": "billing contract suite (20 cases)",
+      "ok": true,
+      "ms": 170,
+      "tail": "20 passed, 0 failed"
+    },
+    {
+      "id": "T-09",
+      "agent": "Worker-Sonnet",
+      "desc": "recovery/rollback suite",
+      "ok": true,
+      "ms": 160,
+      "tail": "11 passed, 0 failed"
+    },
+    {
+      "id": "T-10",
+      "agent": "Core-Fable-5",
+      "desc": "hostile chaos harness (8 probe families)",
+      "ok": true,
+      "ms": 368,
+      "tail": "no findings — all probes survived"
+    }
+  ],
+  "anomalies": [],
+  "status": "GREEN"
+}

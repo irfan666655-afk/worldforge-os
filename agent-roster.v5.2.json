@@ -1,0 +1,472 @@
+{
+  "$comment": "Canonical machine-readable agent roster for COS/WorldForge v5.2. v5.2 doctrine patch resolves four Rule 13 findings surfaced by lint_worldforge.py (see decisions-ledger.json D-2026-07-05-01..05) and seats Brand & Identity Guild Lead in the roster. escalatesTo is structured so Rule 13 stays lintable; escalationNote keeps the prose.",
+  "rosterVersion": "5.2.0",
+  "authorityRoles": {
+    "$comment": "Rule 13: every escalation path must resolve, in at most two hops, to one of these. Guild leads + Creative Director + Producer.",
+    "roles": [
+      "Creative Director",
+      "Producer",
+      "Budget Guild Lead",
+      "Marketing Director",
+      "Business Operations Lead",
+      "Game Design Lead",
+      "Innovation Lab Lead",
+      "Brand & Identity Guild Lead"
+    ]
+  },
+  "externalRoles": {
+    "$comment": "Empty as of v5.2 — Brand & Identity Guild Lead now has a roster row (D-2026-07-05-04).",
+    "roles": []
+  },
+  "guilds": [
+    {
+      "key": "core",
+      "name": "Core Production",
+      "agents": [
+        {
+          "name": "Creative Director",
+          "resp": "Narrow tie-breaker across all Guilds; final call only when two leads genuinely conflict.",
+          "auth": "Final say on conflicts only — does not pre-empt domain leads.",
+          "escalatesTo": [],
+          "escalationNote": "None (top of the chain).",
+          "mem": "decisionRecords"
+        },
+        {
+          "name": "Screenwriter / Story Lead",
+          "resp": "Stages 1–2: Film Bible, beats, causality, want/need, arcs.",
+          "auth": "Owns story/theme.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director on theme conflicts.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Cinematographer",
+          "resp": "Stage 3: camera, lens, lighting, color, blocking, depth; asset-fingerprint sign-off on visual canon.",
+          "auth": "Owns visual language.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director on doctrine conflicts.",
+          "mem": "Asset fingerprint records"
+        },
+        {
+          "name": "Producer",
+          "resp": "Stage 4 + Budget Guild oversight; feasibility sanity-check at Stage 1.",
+          "auth": "Owns scope/budget gating.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director on scope-vs-ambition conflicts.",
+          "mem": "Budget ledger, validationLedger"
+        },
+        {
+          "name": "Model Router",
+          "resp": "Stage 5: picks model per shot, runs test generations, watches deprecation.",
+          "auth": "Owns model selection.",
+          "escalatesTo": [
+            "Cinematographer"
+          ],
+          "escalationNote": "Cinematographer if routing compromises visual doctrine.",
+          "mem": "model-router.md, decision records"
+        },
+        {
+          "name": "QA / Continuity Supervisor",
+          "resp": "Stage 8: validation, targeted repair, fingerprint diffing against canon.",
+          "auth": "Owns validation gate.",
+          "escalatesTo": [
+            "Producer"
+          ],
+          "escalationNote": "Producer if a failure is Film-Bible-level.",
+          "mem": "validationLedger"
+        }
+      ]
+    },
+    {
+      "key": "crosscut",
+      "name": "Cross-Cutting Guilds",
+      "agents": [
+        {
+          "name": "Budget Guild Lead",
+          "resp": "Running cost ledger, per-shot estimation, reconciling estimate vs. actual.",
+          "auth": "Owns the number behind Rule 3's gate.",
+          "escalatesTo": [
+            "Producer"
+          ],
+          "escalationNote": "Producer on go/no-go.",
+          "mem": "Budget ledger in validationLedger"
+        },
+        {
+          "name": "Asset Librarian",
+          "resp": "Studio-level memory: promotion/demotion between Project Memory and the Asset Library.",
+          "auth": "Owns promotion criteria, not the promotion decision itself.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director on any promotion (never silent, per Rule 12).",
+          "mem": "assets/asset-library-schema.json"
+        },
+        {
+          "name": "Brand Guardian",
+          "resp": "Cross-Guild consistency watchdog against locked brand doctrine, regardless of producing Guild.",
+          "auth": "Can block release, cannot override doctrine itself.",
+          "escalatesTo": [
+            "Brand & Identity Guild Lead"
+          ],
+          "escalationNote": "Brand & Identity Guild Lead on doctrine ambiguity.",
+          "mem": "Asset Library doctrine object"
+        }
+      ]
+    },
+    {
+      "key": "creative-plus",
+      "name": "Creative+ Guilds",
+      "agents": [
+        {
+          "name": "Film Director",
+          "resp": "Scene-level directing beneath macro story — blocking intent, performance beats within a scene.",
+          "auth": "Owns in-scene interpretation.",
+          "escalatesTo": [
+            "Screenwriter / Story Lead"
+          ],
+          "escalationNote": "Screenwriter on story-level conflicts.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Storyboard Artist",
+          "resp": "Cheap-draft visual sequencing before Stage 4.5 simulation.",
+          "auth": "Owns draft sequencing.",
+          "escalatesTo": [
+            "Cinematographer"
+          ],
+          "escalationNote": "Cinematographer on visual-doctrine conflicts.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Environment Designer",
+          "resp": "Locks environment appearance once, early.",
+          "auth": "Owns environment canon.",
+          "escalatesTo": [
+            "Cinematographer"
+          ],
+          "escalationNote": "Cinematographer.",
+          "mem": "Asset fingerprint records"
+        },
+        {
+          "name": "Character Designer",
+          "resp": "Locks character appearance once, early.",
+          "auth": "Owns character canon.",
+          "escalatesTo": [
+            "Cinematographer",
+            "Screenwriter / Story Lead"
+          ],
+          "escalationNote": "Cinematographer / Screenwriter.",
+          "mem": "Asset fingerprint records"
+        },
+        {
+          "name": "Graphic Designer",
+          "resp": "Print, packaging, static visual deliverables.",
+          "auth": "Owns execution within locked doctrine.",
+          "escalatesTo": [
+            "Brand & Identity Guild Lead"
+          ],
+          "escalationNote": "Brand & Identity Guild Lead on doctrine questions.",
+          "mem": "Asset Library"
+        },
+        {
+          "name": "Motion Designer",
+          "resp": "Titles, lower-thirds, kinetic type, transitions.",
+          "auth": "Owns motion execution.",
+          "escalatesTo": [
+            "Cinematographer"
+          ],
+          "escalationNote": "Cinematographer on visual-doctrine fit.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Thumbnail Intelligence Agent",
+          "resp": "Designs and tests thumbnail/cover options against genre and platform conventions.",
+          "auth": "Owns thumbnail proposals.",
+          "escalatesTo": [
+            "Marketing Director"
+          ],
+          "escalationNote": "Marketing Director on platform strategy conflicts.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Music Composer",
+          "resp": "Score/music direction consistent with Film Bible tone.",
+          "auth": "Owns musical doctrine.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director on tone conflicts.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Sound Designer",
+          "resp": "Diegetic/ambient sound design, distinct from dialogue.",
+          "auth": "Owns sound palette.",
+          "escalatesTo": [
+            "Cinematographer"
+          ],
+          "escalationNote": "Cinematographer on scene-fit.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Voice Director",
+          "resp": "Dialogue/VO direction, casting-equivalent decisions for AI voice.",
+          "auth": "Owns voice casting.",
+          "escalatesTo": [
+            "Screenwriter / Story Lead"
+          ],
+          "escalationNote": "Screenwriter on character-voice fit.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Game Design Lead",
+          "resp": "Mechanics, systems, playable-sim design when the project is a game.",
+          "auth": "Owns game systems design.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director on narrative-vs-mechanics conflicts.",
+          "mem": "Project Memory (game variant)"
+        }
+      ]
+    },
+    {
+      "key": "marketing",
+      "name": "Marketing & Growth",
+      "agents": [
+        {
+          "name": "Marketing Director",
+          "resp": "Owns overall marketing strategy for a deliverable/launch.",
+          "auth": "Owns channel strategy.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director on brand-tone conflicts.",
+          "mem": "Asset Library doctrine"
+        },
+        {
+          "name": "Social Media Manager",
+          "resp": "Platform-specific content adaptation and posting cadence.",
+          "auth": "Owns platform execution.",
+          "escalatesTo": [
+            "Marketing Director"
+          ],
+          "escalationNote": "Marketing Director.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "SEO Specialist",
+          "resp": "Discoverability — metadata, titles, on-page/on-platform optimization.",
+          "auth": "Owns SEO tactics.",
+          "escalatesTo": [
+            "Marketing Director"
+          ],
+          "escalationNote": "Marketing Director.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Growth Strategist",
+          "resp": "Funnel/retention/distribution strategy beyond a single launch.",
+          "auth": "Owns growth tactics.",
+          "escalatesTo": [
+            "Marketing Director"
+          ],
+          "escalationNote": "Marketing Director on strategy conflicts.",
+          "mem": "Analytics data"
+        },
+        {
+          "name": "Launch Manager",
+          "resp": "Coordinates a launch across every Guild that touches it.",
+          "auth": "Owns launch sequencing.",
+          "escalatesTo": [
+            "Producer"
+          ],
+          "escalationNote": "Producer on scope/timeline conflicts.",
+          "mem": "validationLedger"
+        },
+        {
+          "name": "Community Manager",
+          "resp": "Ongoing audience relationship management post-launch.",
+          "auth": "Owns community tactics.",
+          "escalatesTo": [
+            "Marketing Director"
+          ],
+          "escalationNote": "Marketing Director.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Analytics Agent",
+          "resp": "Defines what to track and reports back findings.",
+          "auth": "Owns measurement methodology.",
+          "escalatesTo": [
+            "Growth Strategist"
+          ],
+          "escalationNote": "Growth Strategist on what to prioritize.",
+          "mem": "Feeds Lab lessons-learned"
+        }
+      ]
+    },
+    {
+      "key": "web3d",
+      "name": "Web/Interactive, UI & 3D Studio",
+      "agents": [
+        {
+          "name": "Website Architect",
+          "resp": "Site structure, information architecture, page-level continuity.",
+          "auth": "Owns structural decisions.",
+          "escalatesTo": [
+            "Brand & Identity Guild Lead"
+          ],
+          "escalationNote": "Brand & Identity Guild Lead on doctrine fit.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "UI Designer",
+          "resp": "Interface-level design system, components, interaction patterns.",
+          "auth": "Owns UI execution.",
+          "escalatesTo": [
+            "Website Architect"
+          ],
+          "escalationNote": "Website Architect.",
+          "mem": "Asset Library (if promoted)"
+        },
+        {
+          "name": "3D Engineer",
+          "resp": "Three.js / React / Spline pipeline — 3D web builds, interactive scenes.",
+          "auth": "Owns technical feasibility calls for 3D web.",
+          "escalatesTo": [
+            "Website Architect"
+          ],
+          "escalationNote": "Website Architect on scope and doctrine fit.",
+          "mem": "Project Memory"
+        }
+      ]
+    },
+    {
+      "key": "bizops",
+      "name": "Business Operations",
+      "agents": [
+        {
+          "name": "Business Operations Lead",
+          "resp": "Studio-level operational concerns — process, not creative content.",
+          "auth": "Owns process, not creative calls.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director if process conflicts with creative discipline.",
+          "mem": "Asset Library lessons-learned"
+        },
+        {
+          "name": "Client Manager",
+          "resp": "Client-facing communication and expectation-setting.",
+          "auth": "Owns client relationship framing.",
+          "escalatesTo": [
+            "Producer"
+          ],
+          "escalationNote": "Producer on scope commitments made to a client.",
+          "mem": "Project Memory"
+        },
+        {
+          "name": "Knowledge Librarian",
+          "resp": "Studio SOPs — process documentation, distinct from creative canon.",
+          "auth": "Owns documentation structure.",
+          "escalatesTo": [
+            "Business Operations Lead"
+          ],
+          "escalationNote": "Business Operations Lead.",
+          "mem": "Separate store — process knowledge, not creative canon"
+        },
+        {
+          "name": "Plugin/Integration Engineer",
+          "resp": "External API integration, plugin architecture.",
+          "auth": "Owns technical integration decisions.",
+          "escalatesTo": [
+            "Business Operations Lead"
+          ],
+          "escalationNote": "Business Operations Lead on overlap disputes.",
+          "mem": "asset-library-schema.json integrations object"
+        }
+      ]
+    },
+    {
+      "key": "research",
+      "name": "Research & Automation Lab",
+      "agents": [
+        {
+          "name": "Research Agent",
+          "resp": "Verifies claims about model capability or market landscape before they're assumed elsewhere.",
+          "auth": "Owns fact-finding, not the decision made from it.",
+          "escalatesTo": [
+            "Business Operations Lead",
+            "Model Router"
+          ],
+          "escalationNote": "Business Operations Lead on disputed findings; Model Router advisory on model-capability questions. Findings return to the requester as output, not escalation.",
+          "mem": "Feeds Asset Library lessons-learned"
+        },
+        {
+          "name": "Automation Engineer",
+          "resp": "Identifies and removes repetitive manual work across Guilds.",
+          "auth": "Owns automation implementation, not process changes affecting creative discipline.",
+          "escalatesTo": [
+            "Business Operations Lead"
+          ],
+          "escalationNote": "Business Operations Lead.",
+          "mem": "N/A"
+        },
+        {
+          "name": "Innovation Lab Lead",
+          "resp": "3–5 year horizon thinking, modular-architecture proposals.",
+          "auth": "Owns exploration, never implementation authority.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director before anything speculative gets adopted.",
+          "mem": "architectural-principles.md"
+        },
+        {
+          "name": "Prompt Engineer",
+          "resp": "Stage 6: turns a locked UFDM shot into a model-specific prompt.",
+          "auth": "Owns compilation technique.",
+          "escalatesTo": [
+            "Model Router",
+            "Producer"
+          ],
+          "escalationNote": "Model Router on capability-vs-compilation mismatch; Producer if unresolved.",
+          "mem": "prompt-compiler.md"
+        },
+        {
+          "name": "Asset Manager",
+          "resp": "Day-to-day within-project asset handling (fingerprinting, locking).",
+          "auth": "Owns within-project asset discipline.",
+          "escalatesTo": [
+            "Asset Librarian"
+          ],
+          "escalationNote": "Asset Librarian on cross-project promotion.",
+          "mem": "Asset fingerprint records (project-level)"
+        }
+      ]
+    },
+    {
+      "key": "brand",
+      "name": "Brand & Identity Guild",
+      "agents": [
+        {
+          "name": "Brand & Identity Guild Lead",
+          "resp": "Owns brand doctrine — the color/type/tone canon in the Asset Library doctrine object — and its interpretation when a deliverable is ambiguous against it.",
+          "auth": "Owns brand doctrine and doctrine interpretation; cannot override locked project-level creative canon.",
+          "escalatesTo": [
+            "Creative Director"
+          ],
+          "escalationNote": "Creative Director on doctrine conflicts.",
+          "mem": "Asset Library doctrine object"
+        }
+      ]
+    }
+  ]
+}

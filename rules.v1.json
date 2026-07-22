@@ -1,0 +1,89 @@
+{
+  "rules_version": "1.1.0",
+  "generated_at": "2026-07-18T16:22:31.668402+00:00",
+  "generator": "gen_rules.py",
+  "source": "lint_worldforge.py",
+  "source_hash": "sha256:1c4248d891039267eff680d9bda5b0f3bda37f0b024bda5de667cb353f09622c",
+  "rules": [
+    {
+      "id": "GOV-1",
+      "doctrine": "Rule 12 / Rule 7",
+      "predicate": "missing_field",
+      "params": {
+        "path": "promotion.reason"
+      },
+      "severity": "error",
+      "message": "No silent promotion: a decision reason is required (Rule 12).",
+      "tags": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "GOV-1b",
+      "doctrine": "Rule 7",
+      "predicate": "missing_field",
+      "params": {
+        "path": "promotion.actor"
+      },
+      "severity": "error",
+      "message": "Decision records require an actor (Rule 7).",
+      "tags": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "GOV-2",
+      "doctrine": "Rule 7 (impact escalation)",
+      "predicate": "impact_gte",
+      "params": {
+        "threshold": "high"
+      },
+      "severity": "warn",
+      "message": "High-impact promotion: second approver required before commit.",
+      "tags": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "GOV-3",
+      "doctrine": "Rule 12 (structural)",
+      "predicate": "missing_field",
+      "params": {
+        "path": "asset.fingerprint"
+      },
+      "severity": "warn",
+      "message": "Asset has no recorded fingerprint; promoted asset cannot be diffed against canon (Rule 4).",
+      "tags": [
+        "promotion"
+      ]
+    },
+    {
+      "id": "SCHEMA-1",
+      "doctrine": "asset-library-schema v3.1",
+      "predicate": "missing_field",
+      "params": {
+        "path": "asset.type"
+      },
+      "severity": "error",
+      "message": "Asset record missing required field: type.",
+      "tags": [
+        "promotion",
+        "schema"
+      ]
+    },
+    {
+      "id": "SCHEMA-2",
+      "doctrine": "asset-library-schema v3.1",
+      "predicate": "missing_field",
+      "params": {
+        "path": "asset.name"
+      },
+      "severity": "error",
+      "message": "Asset record missing required field: name.",
+      "tags": [
+        "promotion",
+        "schema"
+      ]
+    }
+  ]
+}
