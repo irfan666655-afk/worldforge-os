@@ -11,8 +11,11 @@ You see "offline" for one of two normal reasons:
 
 | You're viewing… | `/api/roster` result | Why |
 |---|---|---|
-| **GitHub Pages** (`*.github.io`) | 404 — no server exists | Pages is static-only; it serves the HTML artifact, there is no Node backend. |
 | **Vercel** (`*.vercel.app`) before DB setup | **503 `ENV-01`** | The server is up, but the roster seam is *fail-closed* until `SUPABASE_URL` / `SUPABASE_ANON_KEY` are set. |
+| The raw HTML artifact (opened via `file://` or any static host) | request fails — no server | The single-file artifact runs standalone with no backend, so it always uses the offline roster. |
+
+Vercel is the one deployment that includes the backend — open the `*.vercel.app`
+URL (not a static copy of the HTML) for the API to exist at all.
 
 > The app is architected **fail-closed**: an unconfigured seam returns `503`
 > and disables itself rather than running on undefined credentials. The badge
